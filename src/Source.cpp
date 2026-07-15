@@ -1828,7 +1828,6 @@ void CollectYarnCurves(StitchMesh& sm, std::vector<std::vector<glm::vec3>>& yarn
 	{
 		glm::vec3 faceNormal = glm::normalize(glm::cross(tr - bl, tl - br));
 		std::vector<glm::vec3> ctrl;
-
 		for (auto& tp : templ)
 		{
 			float u = tp.x, v = tp.y;
@@ -1836,41 +1835,35 @@ void CollectYarnCurves(StitchMesh& sm, std::vector<std::vector<glm::vec3>>& yarn
 			pos += faceNormal * tp.z;
 			ctrl.push_back(pos);
 		}
-
 		std::vector<glm::vec3> pts;
 		for (int i = 1; i < (int)ctrl.size() - 2; i++)
 		{
-			glm::vec3 p0 = ctrl[i - 1];
-			glm::vec3 p1 = ctrl[i];
-			glm::vec3 p2 = ctrl[i + 1];
-			glm::vec3 p3 = ctrl[i + 2];
-
+			glm::vec3 p0 = ctrl[i - 1], p1 = ctrl[i], p2 = ctrl[i + 1], p3 = ctrl[i + 2];
 			bool isLast = (i == (int)ctrl.size() - 3);
 			int end = isLast ? SPLINESAMPLES : SPLINESAMPLES - 1;
-
 			for (int s = 0; s < end; s++)
 			{
 				float t = float(s) / float(SPLINESAMPLES - 1);
 				pts.push_back(CatmullRom(p0, p1, p2, p3, t));
 			}
 		}
-
 		if (pts.size() >= 2)
 			yarnCurves.push_back(pts);
 	};
-	
+
 	auto knitTemp = KnitTemplate();
 	auto purlTemp1 = PurlTemplate1();
 	auto purlTemp2 = PurlTemplate2();
+
 	auto castOnLeft = CastOnTemplateLeft();
 	auto castOnRight = CastOnTemplateRight();
 	auto castOnLoop = CastOnTemplateLoop();
+	auto castOnStart = CastOnTemplateStart();
 
 	auto bindOffOver = BindOffTemplateOver();
 	auto bindOffUnder = BindOffTemplateUnder();
 	auto bindOffOverTied = BindOffTemplateOverTied();
 	auto bindOffUnderTied = BindOffTemplateUnderTied();
-
 
 	auto selvageLeftTop = LeftSelvageTemplateTop();
 	auto selvageLeftBot = LeftSelvageTemplateBot();
@@ -1891,21 +1884,19 @@ void CollectYarnCurves(StitchMesh& sm, std::vector<std::vector<glm::vec3>>& yarn
 
 		if (idx < sm.nCols - 1)
 		{
-			if (idx != 0)
+			if (idx == 0)
+				SampleTemplateCurve(castOnStart, bl, br, tl, tr);
+			else
 			{
 				SampleTemplateCurve(castOnLeft, bl, br, tl, tr);
 				SampleTemplateCurve(castOnRight, bl, br, tl, tr);
+				if (idx != sm.nCols - 2)
+					SampleTemplateCurve(castOnLoop, bl, br, tl, tr);
 			}
-			if (idx != sm.nCols - 2)
-				SampleTemplateCurve(castOnLoop, bl, br, tl, tr);
 		}
 		else if (idx == (int)sm.faces.size() - 1 && evenRow)
 		{
 			SampleTemplateCurve(selvageCloseRight, bl, br, tl, tr);
-		}
-		else if (idx == (int)sm.faces.size() - 1 || idx == sm.nCols - 1)
-		{
-			continue;
 		}
 		else if (idx == (int)sm.faces.size() - sm.nCols)
 		{
@@ -1914,10 +1905,21 @@ void CollectYarnCurves(StitchMesh& sm, std::vector<std::vector<glm::vec3>>& yarn
 			else
 				continue;
 		}
-		else if (idx > (int)sm.faces.size() - (iCols + 2))
+		else if (idx == (int)sm.faces.size() - 1 || idx == sm.nCols - 1)
 		{
-			SampleTemplateCurve(bindOffOver, bl, br, tl, tr);
-			SampleTemplateCurve(bindOffUnder, bl, br, tl, tr);
+			continue;
+		}
+		else if (idx > (int)sm.faces.size() - sm.nCols)
+		{
+			if (idx == (int)sm.faces.size() - 2 && !evenRow)
+				SampleTemplateCurve(bindOffOverTied, bl, br, tl, tr);
+			else
+				SampleTemplateCurve(bindOffOver, bl, br, tl, tr);
+
+			if (idx == (int)sm.faces.size() - sm.nCols + 1 && evenRow)
+				SampleTemplateCurve(bindOffUnderTied, bl, br, tl, tr);
+			else
+				SampleTemplateCurve(bindOffUnder, bl, br, tl, tr);
 		}
 		else if (col == 0)
 		{
@@ -2393,6 +2395,7 @@ int main(int argc, char* argv[])
 		auto castOnLeft = CastOnTemplateLeft();
 		auto castOnRight = CastOnTemplateRight();
 		auto castOnLoop = CastOnTemplateLoop();
+		auto castOnStart = CastOnTemplateStart();
 
 		auto bindOffOver = BindOffTemplateOver();
 		auto bindOffUnder = BindOffTemplateUnder();
@@ -2407,6 +2410,7 @@ int main(int argc, char* argv[])
 		auto selvageCloseLeft = LeftSelvageTemplateBotFinal();
 		auto selvageCloseRight = RightSelvageTemplateBotFinal();
 		
+		
 		for (int idx = 0; idx < (int)sm.faces.size(); idx++)
 		{
 			auto& face = sm.faces[idx];
@@ -2418,26 +2422,29 @@ int main(int argc, char* argv[])
 			int row = idx / sm.nCols;
 			bool evenRow = (row % 2 == 0);
 
+			//Cast Ons on the first row
 			if (idx < sm.nCols - 1)
 			{
-				if (idx != 0)
+				if (idx == 0)
+					SampleTemplate(castOnStart, bl, br, tl, tr, 360.0f);
+
+				else
 				{
 					SampleTemplate(castOnLeft, bl, br, tl, tr, 360.0f);
 					SampleTemplate(castOnRight, bl, br, tl, tr, 360.0f);
+
+					if (idx != sm.nCols - 2)
+						SampleTemplate(castOnLoop, bl, br, tl, tr, 360.0f);
 				}
 
-				if (idx != sm.nCols - 2)
-					SampleTemplate(castOnLoop, bl, br, tl, tr, 360.0f);
 			}
 
+
+
+			//Covers the FINAL selvages on both the right and left sides
 			else if (idx == (int)sm.faces.size() - 1 && evenRow)
 			{
 				SampleTemplate(selvageCloseRight, bl, br, tl, tr, 360.0f);
-			}
-
-			else if (idx == (int)sm.faces.size() - 1 || idx == sm.nCols - 1)
-			{
-				continue;
 			}
 
 			else if (idx == (int)sm.faces.size() - sm.nCols)
@@ -2449,12 +2456,30 @@ int main(int argc, char* argv[])
 					continue;
 			}
 
-			else if (idx > (int)sm.faces.size() - (iCols + 2))
+			//skips two corners since they won't be holding anything (for now)
+			else if (idx == (int)sm.faces.size() - 1 || idx == sm.nCols - 1)
 			{
-				SampleTemplate(bindOffOver, bl, br, tl, tr, 0.0f);
-				SampleTemplate(bindOffUnder, bl, br, tl, tr, 0.0f);
+				continue;
 			}
 
+
+			//Bind Offs
+			else if (idx > (int)sm.faces.size() - sm.nCols)
+			{
+				if (idx == (int)sm.faces.size() - 2 && !evenRow)
+					SampleTemplate(bindOffOverTied, bl, br, tl, tr, 0.0f);
+
+				else
+					SampleTemplate(bindOffOver, bl, br, tl, tr, 0.0f);
+
+				if (idx == (int)sm.faces.size() - sm.nCols + 1 && evenRow)
+					SampleTemplate(bindOffUnderTied, bl, br, tl, tr, 0.0f);
+
+				else
+					SampleTemplate(bindOffUnder, bl, br, tl, tr, 0.0f);
+			}
+
+			//Selvage Left
 			else if (col == 0)
 			{
 				if (evenRow)
@@ -2463,6 +2488,7 @@ int main(int argc, char* argv[])
 					SampleTemplate(selvageLeftBot, bl, br, tl, tr, 360.0f);
 			}
 
+			//Selvage Right
 			else if (col == sm.nCols - 1)
 			{
 				if (!evenRow)
@@ -2473,6 +2499,7 @@ int main(int argc, char* argv[])
 					SampleTemplate(selvageRightBot, bl, br, tl, tr, 360.0f);
 			}
 
+			//The actual stitch mesh
 			else
 			{
 				SampleTemplate(knitTemp, bl, br, tl, tr, 360.0f);
@@ -2691,7 +2718,6 @@ int main(int argc, char* argv[])
 						if (idx != sm.nCols - 2)
 							SampleTemplate(castOnLoop, bl, br, tl, tr, 360.0f);
 					}
-
 
 				}
 
