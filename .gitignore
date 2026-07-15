@@ -1,0 +1,29 @@
+# Visual Studio
+.vs/
+*.suo
+*.user
+*.vcxproj.user
+
+# Build output
+x64/
+x86/
+Debug/
+Release/
+
+# Compiled binaries
+*.exe
+*.dll
+*.lib
+*.pdb
+*.ilk
+*.obj
+*.ipch
+
+# CMake build folders (if used)
+build/
+CMakeFiles/
+CMakeCache.txt
+
+# OS files
+.DS_Store
+Thumbs.db
