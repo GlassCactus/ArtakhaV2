@@ -934,7 +934,6 @@ std::vector<glm::vec3> CastOnTemplateRight()
 		{0.375f, -0.375f, yarnRadius},
 		{0.3125f, 0.0f, yarnRadius},
 		{0.25f, 0.25f, yarnRadius},
-		{0.125f, 0.35f, 0.0f},
 		{0.0f, 0.5f, -yarnRadius},
 		{-0.5f, 0.35f, -yarnRadius},
 
@@ -959,15 +958,36 @@ std::vector<glm::vec3> CastOnTemplateLoop()
 {
 	return
 	{
-		{1.5f, 0.5f, yarnRadius * 2.0f},
+		{1.5f, 0.4f, yarnRadius * 2.0f},
 		{1.0f, 0.5f, yarnRadius * 2.0f},
-		{0.75f, 0.4f, yarnRadius * 2.5f},
-		{0.25f, 0.25f, yarnRadius * 2.5f},
-		{0.1f, 0.1f, yarnRadius * 2.0f},
+		{0.55f, 0.4f, yarnRadius * 3.0f},
+		{0.25f, 0.25f, yarnRadius * 3.0f},
+		{0.1f, 0.1f, yarnRadius * 2.5f},
 
 		{0.1f, 0.1f, -yarnRadius * 1.5f},
-		{0.25f, 0.25f, -yarnRadius * 1.5f},
-		{0.75f, 0.5f, -yarnRadius * 1.5f},
+		{0.25f, 0.25f, -yarnRadius * 2.0f},
+		{0.55f, 0.5f, -yarnRadius * 1.5f},
+		{1.0f, 0.5f, -yarnRadius},
+		{1.5f, 0.35f, -yarnRadius},
+	};
+};
+
+std::vector<glm::vec3> CastOnTemplateStart()
+{
+	return
+	{
+		{1.5f, 0.5f, yarnRadius * 2.0f},
+		{1.0f, 0.5f, yarnRadius * 2.0f},
+		{0.65f, 0.4f, yarnRadius * 2.0f},
+		{0.6f, 0.25f, yarnRadius * 2.0f},
+		{0.6f, 0.0f, yarnRadius},
+
+		{0.6f, 0.0f, -yarnRadius},
+
+
+		{0.6f, 0.0f, -yarnRadius * 2.0f},
+		{0.6f, 0.25f, -yarnRadius * 2.0f},
+		{0.65f, 0.5f, -yarnRadius * 2.0f},
 		{1.0f, 0.5f, -yarnRadius},
 		{1.5f, 0.35f, -yarnRadius},
 	};
@@ -985,6 +1005,18 @@ std::vector<glm::vec3> BindOffTemplateOver()
 	};
 };
 
+//Tying it off when it's at the end
+std::vector<glm::vec3> BindOffTemplateOverTied()
+{
+	return
+	{
+		{0.30f, 1.25f, -yarnRadius},
+		{0.3125f, 1.0f, yarnRadius},
+		{0.5f, 0.6f, yarnRadius},
+		{1.0f, 0.5f, 0.0f},
+	};
+};
+
 std::vector<glm::vec3> BindOffTemplateUnder()
 {
 	return
@@ -994,6 +1026,19 @@ std::vector<glm::vec3> BindOffTemplateUnder()
 		{0.5f, 0.6f, yarnRadius},
 		{0.0f, 0.5f, 0.0f},
 		{-0.5f, 0.6f, 0.0f},
+	};
+};
+
+
+//Tying it off when it's at the end
+std::vector<glm::vec3> BindOffTemplateUnderTied()
+{
+	return
+	{
+		{0.70f, 1.25f, yarnRadius},
+		{0.6875f, 1.0f, yarnRadius},
+		{0.5f, 0.6f, -yarnRadius},
+		{0.0f, 0.5f, 0.0f},
 	};
 };
 
@@ -1820,8 +1865,13 @@ void CollectYarnCurves(StitchMesh& sm, std::vector<std::vector<glm::vec3>>& yarn
 	auto castOnLeft = CastOnTemplateLeft();
 	auto castOnRight = CastOnTemplateRight();
 	auto castOnLoop = CastOnTemplateLoop();
+
 	auto bindOffOver = BindOffTemplateOver();
 	auto bindOffUnder = BindOffTemplateUnder();
+	auto bindOffOverTied = BindOffTemplateOverTied();
+	auto bindOffUnderTied = BindOffTemplateUnderTied();
+
+
 	auto selvageLeftTop = LeftSelvageTemplateTop();
 	auto selvageLeftBot = LeftSelvageTemplateBot();
 	auto selvageRightTop = RightSelvageTemplateTop();
@@ -2346,6 +2396,8 @@ int main(int argc, char* argv[])
 
 		auto bindOffOver = BindOffTemplateOver();
 		auto bindOffUnder = BindOffTemplateUnder();
+		auto bindOffOverTied = BindOffTemplateOverTied();
+		auto bindOffUnderTied = BindOffTemplateUnderTied();
 
 		auto selvageLeftTop = LeftSelvageTemplateTop();
 		auto selvageLeftBot = LeftSelvageTemplateBot();
@@ -2607,9 +2659,12 @@ int main(int argc, char* argv[])
 			auto castOnLeft = CastOnTemplateLeft();
 			auto castOnRight = CastOnTemplateRight();
 			auto castOnLoop = CastOnTemplateLoop();
+			auto castOnStart = CastOnTemplateStart();
 
 			auto bindOffOver = BindOffTemplateOver();
 			auto bindOffUnder = BindOffTemplateUnder();
+			auto bindOffOverTied = BindOffTemplateOverTied();
+			auto bindOffUnderTied = BindOffTemplateUnderTied();
 
 			for (int idx = 0; idx < (int)sm.faces.size(); idx++)
 			{
@@ -2622,27 +2677,30 @@ int main(int argc, char* argv[])
 				int row = idx / sm.nCols;
 				bool evenRow = (row % 2 == 0);
 
-
+				//Cast Ons on the first row
 				if (idx < sm.nCols - 1)
 				{
-					if (idx != 0)
+					if (idx == 0)
+						SampleTemplate(castOnStart, bl, br, tl, tr, 360.0f);
+
+					else
 					{
 						SampleTemplate(castOnLeft, bl, br, tl, tr, 360.0f);
 						SampleTemplate(castOnRight, bl, br, tl, tr, 360.0f);
+
+						if (idx != sm.nCols - 2)
+							SampleTemplate(castOnLoop, bl, br, tl, tr, 360.0f);
 					}
 
-					if (idx != sm.nCols - 2)
-						SampleTemplate(castOnLoop, bl, br, tl, tr, 360.0f);
+
 				}
 
+				
+
+				//Covers the FINAL selvages on both the right and left sides
 				else if (idx == (int)sm.faces.size() - 1 && evenRow)
 				{
 					SampleTemplate(selvageCloseRight, bl, br, tl, tr, 360.0f);
-				}
-
-				else if (idx == (int)sm.faces.size() - 1 || idx == sm.nCols - 1)
-				{
-					continue;
 				}
 
 				else if (idx == (int)sm.faces.size() - sm.nCols)
@@ -2654,12 +2712,30 @@ int main(int argc, char* argv[])
 						continue;
 				}
 
-				else if (idx > (int)sm.faces.size() - (iCols + 2))
+				//skips two corners since they won't be holding anything (for now)
+				else if (idx == (int)sm.faces.size() - 1 || idx == sm.nCols - 1)
 				{
-					SampleTemplate(bindOffOver, bl, br, tl, tr, 0.0f);
-					SampleTemplate(bindOffUnder, bl, br, tl, tr, 0.0f);
+					continue;
 				}
 
+
+				//Bind Offs
+				else if (idx > (int)sm.faces.size() - sm.nCols)
+				{
+					if (idx == (int)sm.faces.size() - 2 && !evenRow)
+						SampleTemplate(bindOffOverTied, bl, br, tl, tr, 0.0f);
+
+					else
+						SampleTemplate(bindOffOver, bl, br, tl, tr, 0.0f);
+					
+					if (idx == (int)sm.faces.size() - sm.nCols + 1 && evenRow)
+						SampleTemplate(bindOffUnderTied, bl, br, tl, tr, 0.0f);
+
+					else
+						SampleTemplate(bindOffUnder, bl, br, tl, tr, 0.0f);
+				}
+
+				//Selvage Left
 				else if (col == 0)
 				{
 					if (evenRow)
@@ -2668,6 +2744,7 @@ int main(int argc, char* argv[])
 						SampleTemplate(selvageLeftBot, bl, br, tl, tr, 360.0f);
 				}
 
+				//Selvage Right
 				else if (col == sm.nCols - 1)
 				{
 					if (!evenRow)
@@ -2678,6 +2755,7 @@ int main(int argc, char* argv[])
 						SampleTemplate(selvageRightBot, bl, br, tl, tr, 360.0f);
 				}
 				
+				//The actual stitch mesh
 				else
 				{
 					SampleTemplate(knitTemp, bl, br, tl, tr, 360.0f);
