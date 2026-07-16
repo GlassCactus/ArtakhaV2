@@ -85,7 +85,8 @@ int iRows = 8;
 int iCols = 8;
 float stitchHeight = 1.0f;
 float stitchWidth = 1.0f;
-
+float restLengthCourse = 0.75f;
+float restLengthWale = 0.75f;
 
 glm::vec3 quadPos = glm::vec3(0.0f, 0.0f, 0.0f);
 glm::vec3 quadCameraPos = glm::vec3(0.0f, 0.0f, 3.0f);
@@ -2351,10 +2352,8 @@ int main(int argc, char* argv[])
 		BuildStitchMesh(sm, nRows, nCols, stitchHeight, stitchWidth);
 		BuildDualGraph(sm, dg);
 
-		float stitchArea = sm.stitchHeight * sm.stitchWidth;
-		float alpha = 0.75f;
-		float rCourse = alpha * sqrt(stitchArea);
-		float rWale = rCourse;
+		float rCourse = restLengthCourse;
+		float rWale = restLengthWale;
 
 		MorphStitchMesh(sm, dg, (MorphType)morphType, morphAmount);
 
@@ -2591,10 +2590,8 @@ int main(int argc, char* argv[])
 		yarnShader.Bind();
 		yarnVAO.Bind();
 
-		float stitchArea = sm.stitchHeight * sm.stitchWidth;
-		float alpha = 0.75f;
-		float rCourse = alpha * sqrt(stitchArea);
-		float rWale = rCourse;
+		float rCourse = restLengthCourse;
+		float rWale = restLengthWale;
 
 		yarnVertices.clear();
 		yarnIndices.clear();
@@ -2720,8 +2717,6 @@ int main(int argc, char* argv[])
 					}
 
 				}
-
-				
 
 				//Covers the FINAL selvages on both the right and left sides
 				else if (idx == (int)sm.faces.size() - 1 && evenRow)
@@ -2967,12 +2962,15 @@ int main(int argc, char* argv[])
 			yarnHack = true;
 
 
-		if (ImGui::SliderFloat("Rest Length of Wale", &stitchHeight, 0.1f, 2.0f))
+		if (ImGui::SliderFloat("Stitch Width", &stitchWidth, 0.1f, 2.0f))
+			yarnHack = true;
+		if (ImGui::SliderFloat("Stitch Height", &stitchHeight, 0.1f, 2.0f))
 			yarnHack = true;
 
+		ImGui::NewLine();
+		ImGui::SliderFloat("Rest Length (Course)", &restLengthCourse, 0.05f, 2.0f);
+		ImGui::SliderFloat("Rest Length (Wale)", &restLengthWale, 0.05f, 2.0f);
 
-		if (ImGui::SliderFloat("Rest Length of Course", &stitchWidth, 0.1f, 2.0f))
-			yarnHack = true;
 
 		ImGui::NewLine();
 
