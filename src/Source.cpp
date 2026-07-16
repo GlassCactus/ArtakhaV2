@@ -74,7 +74,7 @@ float MASS = 0.00f;
 
 
 bool takeScreenshot = false;
-bool QUAD = false;	
+bool QUAD = false;
 bool UImode = false;
 bool showMesh = false;
 bool showDual = false;
@@ -113,7 +113,7 @@ float lightRadius = 50.0f;
 float shadowNearPlane = 0.1f;
 float shadowFarPlane = 300.0f;
 
-int   morphType = 0;      
+int   morphType = 0;
 float morphAmount = 0.0f;
 
 void TakeScreenshot(const std::string& filename, int width, int height)
@@ -122,16 +122,16 @@ void TakeScreenshot(const std::string& filename, int width, int height)
 	glReadBuffer(GL_BACK);
 	glReadPixels(0, 0, width, height, GL_RGB, GL_UNSIGNED_BYTE, pixels.data());
 
-	//Reminder that OpenGL Reads bottom to top. 
+	//Reminder that OpenGL Reads bottom to top.
 	//STB writed TOP to bottom though
 	std::vector<unsigned char> flipped(pixels.size());
 	int rowSize = width * 3;
-	
+
 	for (int y = 0; y < height; y++)
 	{
 		memcpy(flipped.data() + y * rowSize, pixels.data() + (height - 1 - y) * rowSize, rowSize);
 	}
-	
+
 	stbi_write_png(filename.c_str(), width, height, 3, flipped.data(), rowSize);
 	std::cout << "Screenshot saved: " << filename << std::endl;
 }
@@ -250,17 +250,17 @@ TubeFrame InitFrame(glm::vec3 tangent)
 TubeFrame TransportFrame(TubeFrame prev, glm::vec3 newTangent)
 {
 	//This will be perpendicular to both tangents and create a direction outwards from the centerply to rotate around. Think unit circle
-	glm::vec3 axis = glm::cross(prev.tangent, newTangent); 
-	
+	glm::vec3 axis = glm::cross(prev.tangent, newTangent);
+
 	if (glm::length(axis) < 0.0001f)
 		return { newTangent, prev.normal, prev.binormal };
-	
+
 	axis = glm::normalize(axis);
 	float angle = acos(glm::clamp(glm::dot(prev.tangent, newTangent), -1.0f, 1.0f));
 	glm::mat4 rot = glm::rotate(glm::mat4(1.0f), angle, axis);
 	glm::vec3 newNormal = glm::normalize(glm::vec3(rot * glm::vec4(prev.normal, 0.0f)));
 	glm::vec3 newBinormal = glm::normalize(glm::cross(newTangent, newNormal));
-	
+
 	return { newTangent, newNormal, newBinormal };
 }
 
@@ -306,11 +306,11 @@ void GenerateTube(const std::vector<glm::vec3>& points, const std::vector<glm::v
 			unsigned int c = baseVertex + (i + 1) * sides + s;
 			unsigned int d = baseVertex + (i + 1) * sides + (s + 1) % sides;
 
-			indices.push_back(a); 
-			indices.push_back(c); 
+			indices.push_back(a);
+			indices.push_back(c);
 			indices.push_back(b);
-			indices.push_back(b); 
-			indices.push_back(c); 
+			indices.push_back(b);
+			indices.push_back(c);
 			indices.push_back(d);
 		}
 	}
@@ -321,16 +321,16 @@ glm::vec3 CatmullRom(glm::vec3 p0, glm::vec3 p1, glm::vec3 p2, glm::vec3 p3, flo
 {
 	float t2 = t * t;
 	float t3 = t * t * t;
-	return 0.5f * ((2.0f * p1) + 
-		(p2 - p0) * t + 
-		(2.0f * p0 - 5.0f * p1 + 4.0f * p2 - p3) * t2 + 
+	return 0.5f * ((2.0f * p1) +
+		(p2 - p0) * t +
+		(2.0f * p0 - 5.0f * p1 + 4.0f * p2 - p3) * t2 +
 		(-p0 + 3.0f * p1 - 3.0f * p2 + p3) * t3);
 }
 
 glm::vec3 CatmullRomTangent(glm::vec3 p0, glm::vec3 p1, glm::vec3 p2, glm::vec3 p3, float t)
 {
 	float t2 = t * t;
-	glm::vec3 CRtan = 0.5f * 
+	glm::vec3 CRtan = 0.5f *
 		((p2 - p0)
 		+ 2.0f * (2.0f * p0 - 5.0f * p1 + 4.0f * p2 - p3) * t
 		+ 3.0f * (-p0 + 3.0f * p1 - 3.0f * p2 + p3) * t2);
@@ -521,13 +521,13 @@ void RelaxNeighbor(StitchMesh& sm, DualGraph& dg, float timeStep, float kernelSp
 
 
 			glm::mat3 HcrossT = glm::transpose(Hcross);
-			AddBlock(t, r, Hcross);   
+			AddBlock(t, r, Hcross);
 			AddBlock(r, t, HcrossT);
-			AddBlock(t, l, -Hcross);   
+			AddBlock(t, l, -Hcross);
 			AddBlock(l, t, -HcrossT);
-			AddBlock(b, r, -Hcross);   
+			AddBlock(b, r, -Hcross);
 			AddBlock(r, b, -HcrossT);
-			AddBlock(b, l, Hcross);   
+			AddBlock(b, l, Hcross);
 			AddBlock(l, b, HcrossT);
 		};
 
@@ -537,8 +537,8 @@ void RelaxNeighbor(StitchMesh& sm, DualGraph& dg, float timeStep, float kernelSp
 			Shear(neighbor.top, neighbor.right, neighbor.bot, neighbor.left);
 		}
 
-		//eeeeuuurgh 
-		auto Bend = [&](int i0, int i1, int i2) 
+		//eeeeuuurgh
+		auto Bend = [&](int i0, int i1, int i2)
 		{
 			glm::vec3 x0 = dg.nodes[i0];
 			glm::vec3 x1 = dg.nodes[i1];
@@ -581,11 +581,11 @@ void RelaxNeighbor(StitchMesh& sm, DualGraph& dg, float timeStep, float kernelSp
 			glm::mat3 H02 = eBend * glm::outerProduct(-dc_dv0, dc_dv1);
 			glm::mat3 H12 = eBend * glm::outerProduct(u, dc_dv1);
 
-			AddBlock(i0, i1, H01); 
+			AddBlock(i0, i1, H01);
 			AddBlock(i1, i0, glm::transpose(H01));
-			AddBlock(i0, i2, H02); 
+			AddBlock(i0, i2, H02);
 			AddBlock(i2, i0, glm::transpose(H02));
-			AddBlock(i1, i2, H12); 
+			AddBlock(i1, i2, H12);
 			AddBlock(i2, i1, glm::transpose(H12));
 		};
 
@@ -673,7 +673,7 @@ void RelaxNeighbor(StitchMesh& sm, DualGraph& dg, float timeStep, float kernelSp
 		dg.nodes[i].y += timeStep * dx[3 * i + 1];
 		dg.nodes[i].z += timeStep * dx[3 * i + 2];
 	}
-	
+
 	//I'm stupid. I forgot that I made sm.nCols and sm.nRows represent the number of FACES. This means the sm dimension is REALLY sm.nCols + 1 and sm.nRows + 1. lol so stupid.
 	for (int r = 0; r <= sm.nRows; r++)
 	{
@@ -687,7 +687,7 @@ void RelaxNeighbor(StitchMesh& sm, DualGraph& dg, float timeStep, float kernelSp
 			int tl = (r - 1) * dg.nCols + (c - 1);
 
 			float corner = 0.25f;
- 
+
 			if (((r == 0) || (r == sm.nRows)) && ((c == 0) || (c == sm.nCols)))
 			{
 				corner = 0.5f;
@@ -776,7 +776,7 @@ void RelaxNeighbor(StitchMesh& sm, DualGraph& dg, float timeStep, float kernelSp
 }
 
 void Relax(StitchMesh& sm, DualGraph& dg, float timeStep, float kStretch, float kShear, float kWale, float rCourse, float rWale)
-{	
+{
 	//Newton Solver gradients and Hessian matrix
 	int N = sm.vertices.size();
 	std::vector<glm::vec3> gradient(N);
@@ -890,10 +890,10 @@ void Relax(StitchMesh& sm, DualGraph& dg, float timeStep, float kStretch, float 
 	{
 		gradient[i].z -= MASS * GRAVITY;
 	}
-	
+
 
 	for (int i = 0; i < sm.vertices.size(); i++)
-	{		
+	{
 		glm::vec3 dx = glm::inverse(hessian[i]) * (-gradient[i]);
 		sm.vertices[i] += timeStep * dx;
 	}
@@ -1002,7 +1002,7 @@ std::vector<glm::vec3> BindOffTemplateOver()
 		{0.3125f, 1.0f, yarnRadius},
 		{0.5f, 0.6f, -yarnRadius},
 		{1.0f, 0.5f, 0.0f},
-		{1.5f, 0.6f, 0.0f},		
+		{1.5f, 0.6f, 0.0f},
 	};
 };
 
@@ -1235,7 +1235,7 @@ std::vector<glm::vec3> PurlTemplate2() //RIGHT ngk couldn't be bothered to swtic
 		{0.75f, 1.25f, yarnRadius}, //from the top
 		{0.6875f, 1.0f, yarnRadius},
 		c0,
-		R,	
+		R,
 		c1,
 		{1.0f, 0.4f, -yarnRadius}, //to the right
 		{1.1875f, 0.4375f, -yarnRadius},
@@ -1250,7 +1250,7 @@ MeshData ConvertMeshToVertexData(const cyTriMesh& mesh)
 	bool hasTexCoords = mesh.HasTextureVertices();
 
 	unsigned int nFaces = mesh.NF();
-	
+
 	//layout
 	data.vertices.reserve(nFaces * 3 * 8);
 
@@ -1356,7 +1356,7 @@ unsigned int LoadCubeMap(std::vector<std::string> faces)
 	for (unsigned int i = 0; i < faces.size(); i++)
 	{
 		unsigned char* data = stbi_load(faces[i].c_str(), &w, &h, &nrChannels, 0);
-		
+
 		if (data)
 		{
 			GLenum format;
@@ -1414,7 +1414,7 @@ static ShaderProgramSource ParseShader(const std::string& filepath)
 				type = ShaderType::FRAGMENT;
 
 			else if (line.find("tessellation control") != std::string::npos)
-				type = ShaderType::TESSCONTROL; 
+				type = ShaderType::TESSCONTROL;
 
 			else if (line.find("tessellation eval") != std::string::npos)
 				type = ShaderType::TESSEVAL;
@@ -1483,7 +1483,7 @@ void mouseCallback(GLFWwindow* window, double xposin, double yposin)
 	else if (CONTROL)
 	{
 		float lightSensitivity = 20.0f;
-		lightTheta += xoffset * lightSensitivity; 
+		lightTheta += xoffset * lightSensitivity;
 		lightPhi += yoffset * lightSensitivity;
 
 		if (lightPhi > 360.0f)
@@ -1539,7 +1539,7 @@ void processInput(GLFWwindow* window)
 	if (glfwGetKey(window, GLFW_KEY_LEFT_ALT) == GLFW_PRESS)
 	{
 		if (!ALT)
-		{ 
+		{
 			QUAD = !QUAD;
 			UImode = !UImode;
 
@@ -1554,8 +1554,8 @@ void processInput(GLFWwindow* window)
 		}
 	}
 
-	else 
-	{ 
+	else
+	{
 		ALT = false;
 	}
 
@@ -1568,7 +1568,7 @@ void processInput(GLFWwindow* window)
 			F5pressed = true;
 		}
 	}
-	
+
 	else
 	{
 		F5pressed = false;
@@ -1831,7 +1831,7 @@ void CollectYarnCurves(StitchMesh& sm, std::vector<std::vector<glm::vec3>>& yarn
 		std::vector<glm::vec3> ctrl;
 		for (auto& tp : templ)
 		{
-			float u = tp.x, v = tp.y;
+			float u = tp.x, v = 1.0f - tp.y; // needed v to be flipped (1 -tp.y) for the correct orientation of the yarn curves
 			glm::vec3 pos = (1 - u) * (1 - v) * tl + u * (1 - v) * tr + u * v * br + (1 - u) * v * bl;
 			pos += faceNormal * tp.z;
 			ctrl.push_back(pos);
@@ -1879,45 +1879,50 @@ void CollectYarnCurves(StitchMesh& sm, std::vector<std::vector<glm::vec3>>& yarn
 		glm::vec3 bl = sm.vertices[face.bl], br = sm.vertices[face.br];
 		glm::vec3 tl = sm.vertices[face.tl], tr = sm.vertices[face.tr];
 
+		// slight change so borders match mirror
 		int col = idx % sm.nCols;
 		int row = idx / sm.nCols;
-		bool evenRow = (row % 2 == 0);
+		int nRow = (int)sm.faces.size() / sm.nCols;
+		int rrow = (nRow - 1) - row;
+		int ridx = rrow * sm.nCols + col;
+		bool evenRow = (rrow % 2 == 0);
 
-		if (idx < sm.nCols - 1)
+		// updated to change idx -> ridx for the selvage curves to match the mirror
+		if (ridx < sm.nCols - 1)
 		{
-			if (idx == 0)
+			if (ridx == 0)
 				SampleTemplateCurve(castOnStart, bl, br, tl, tr);
 			else
 			{
 				SampleTemplateCurve(castOnLeft, bl, br, tl, tr);
 				SampleTemplateCurve(castOnRight, bl, br, tl, tr);
-				if (idx != sm.nCols - 2)
+				if (ridx != sm.nCols - 2)
 					SampleTemplateCurve(castOnLoop, bl, br, tl, tr);
 			}
 		}
-		else if (idx == (int)sm.faces.size() - 1 && evenRow)
+		else if (ridx == (int)sm.faces.size() - 1 && evenRow)
 		{
 			SampleTemplateCurve(selvageCloseRight, bl, br, tl, tr);
 		}
-		else if (idx == (int)sm.faces.size() - sm.nCols)
+		else if (ridx == (int)sm.faces.size() - sm.nCols)
 		{
 			if (!evenRow)
 				SampleTemplateCurve(selvageCloseLeft, bl, br, tl, tr);
 			else
 				continue;
 		}
-		else if (idx == (int)sm.faces.size() - 1 || idx == sm.nCols - 1)
+		else if (ridx == (int)sm.faces.size() - 1 || ridx == sm.nCols - 1)
 		{
 			continue;
 		}
-		else if (idx > (int)sm.faces.size() - sm.nCols)
+		else if (ridx > (int)sm.faces.size() - sm.nCols)
 		{
-			if (idx == (int)sm.faces.size() - 2 && !evenRow)
+			if (ridx == (int)sm.faces.size() - 2 && !evenRow)
 				SampleTemplateCurve(bindOffOverTied, bl, br, tl, tr);
 			else
 				SampleTemplateCurve(bindOffOver, bl, br, tl, tr);
 
-			if (idx == (int)sm.faces.size() - sm.nCols + 1 && evenRow)
+			if (ridx == (int)sm.faces.size() - sm.nCols + 1 && evenRow)
 				SampleTemplateCurve(bindOffUnderTied, bl, br, tl, tr);
 			else
 				SampleTemplateCurve(bindOffUnder, bl, br, tl, tr);
@@ -1948,7 +1953,7 @@ void CollectYarnCurves(StitchMesh& sm, std::vector<std::vector<glm::vec3>>& yarn
 //   bytes 8-15  curve count      (uint64_t)
 //   bytes 16-23 total point count (uint64_t)
 //   bytes 24-63 40-byte ascii info string
-// 
+//
 // then per curve: int32 pointCount (positive = open), followed by that many (x,y,z) float32 triples.
 
 void ExportBCC(const std::vector<std::vector<glm::vec3>>& yarnCurves, const std::string& path)
@@ -1971,11 +1976,11 @@ void ExportBCC(const std::vector<std::vector<glm::vec3>>& yarnCurves, const std:
 
 	char header[64];
 	memset(header, 0, sizeof(header));
-	header[0] = 'B'; 
-	header[1] = 'C'; 
+	header[0] = 'B';
+	header[1] = 'C';
 	header[2] = 'C';
 	header[3] = (char)0x44;// 4-byte int / 4-byte float precision
-	header[4] = 'C'; 
+	header[4] = 'C';
 	header[5] = '0'; // Catmull-Rom, uniform parameterization
 	header[6] = 3; // 3 dimensions
 	header[7] = 1; // up = y. If for some reason y and z are swapped, make this 2.
@@ -2005,6 +2010,57 @@ void ExportBCC(const std::vector<std::vector<glm::vec3>>& yarnCurves, const std:
 	out.close();
 	std::cout << "Wrote " << path << " (" << curveCount << " curves, " << pointCount << " points)" << std::endl;
 }
+
+// ============================================== EXPORT: SMOBJ (stitch mesh OBJ) ============================================== //
+void WriteSMobj(const StitchMesh& sm, const std::string& path)
+	{
+		std::ofstream out(path);
+		if (!out)
+		{
+			std::cout << "WriteSMobj: failed to open " << path << std::endl;
+			return;
+		}
+
+		// classify face idx
+		auto faceType = [&](int idx) -> int
+			{
+				int col = idx % sm.nCols;
+				int row = idx / sm.nCols;
+				bool evenRow = (row % 2 == 0);
+				int nF = (int)sm.faces.size();
+				if (idx < sm.nCols - 1) return 1;                   // bottom row: cast-on -> tuck-twist-
+				if (idx == nF - 1 && evenRow) return 4;             // selvage close right -> edge)
+				if (idx == nF - sm.nCols) return 2;                 // selvage close left  -> edge(
+				if (idx == nF - 1 || idx == sm.nCols - 1) return 2; // skipped corners     -> edge(
+				if (idx > nF - sm.nCols) return 6;                  // top row: bind-off   -> drop
+				if (col == 0) return 2;                             // left selvage        -> edge(
+				if (col == sm.nCols - 1) return 4;                  // right selvage       -> edge)
+				return evenRow ? 3 : 5;                             // interior knit+ / knit-
+			};
+
+		out << "# exported from Artakha knit sim (stitch mesh, relaxed state)\n";
+		// type library
+		out << "L tuck-twist- -lX -yX +lX +yX\n";   // 1  cast-on (bottom row)
+		out << "L edge( x -y1 +y1 x x\n";           // 2  left selvage / corners
+		out << "L knit+ -lX +yX +lX -yX\n";         // 3  interior, even row
+		out << "L edge) x x x +y1 -y1\n";           // 4  right selvage
+		out << "L knit- -lX -yX +lX +yX\n";         // 5  interior, odd row
+		out << "L drop -l1 +y0 +l0 -y0\n";          // 6  bind-off (top row)
+
+		for (const auto& p : sm.vertices)
+			out << "v " << p.x << " " << p.y << " " << p.z << "\n";
+
+		// winding bl -> br -> tr -> tl
+		for (const auto& f : sm.faces)
+			out << "f " << (f.bl + 1) << " " << (f.br + 1) << " " << (f.tr + 1) << " " << (f.tl + 1) << "\n";
+
+		for (int i = 0; i < (int)sm.faces.size(); i++)
+			out << "T " << faceType(i) << "\n";
+
+		out.close();
+		std::cout << "Wrote " << path << " (" << sm.vertices.size() << " verts, " << sm.faces.size() << " faces, typed)" << std::endl;
+	}
+// ============================================= EXPORT DONE ==============================================
 
 // ============================================== RELAX TO CONVERGE + EXPORTING ============================================== //
 // Runs relaxation on a *copy* of sm/dg so it doesn't disturb whatever you're looking at interactively, iterates until the largest per-vertex position
@@ -2037,6 +2093,7 @@ void ExportFullyRelaxedKnit(StitchMesh sm, DualGraph dg, float timeStep, float k
 	}
 
 	std::filesystem::create_directories("output");
+	WriteSMobj(sm, smobjPath);
 	std::vector<std::vector<glm::vec3>> yarnCurves;
 	CollectYarnCurves(sm, yarnCurves);
 	ExportBCC(yarnCurves, bccPath);
@@ -2050,8 +2107,8 @@ int main(int argc, char* argv[])
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-	glfwWindowHint(GLFW_SAMPLES, 4); //Very simple Antialiasing. 
-	
+	glfwWindowHint(GLFW_SAMPLES, 4); //Very simple Antialiasing.
+
 	GLFWwindow* window = glfwCreateWindow(height, width, "Artakha Renderer", NULL, NULL);
 
 	if (window == NULL)
@@ -2076,7 +2133,7 @@ int main(int argc, char* argv[])
 	{
 		glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 	}
-	
+
 	glfwSwapInterval(1);
 
 	if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
@@ -2129,7 +2186,7 @@ int main(int argc, char* argv[])
 		-1.0f,  1.0f,  1.0f,  0.0f,  1.0f,  0.0f,  0.0f, 0.0f,
 		-1.0f,  1.0f, -1.0f,  0.0f,  1.0f,  0.0f,  0.0f, 1.0f
 	};
-	
+
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_MULTISAMPLE);
 	//glEnable(GL_FRAMEBUFFER_SRGB);
@@ -2137,12 +2194,12 @@ int main(int argc, char* argv[])
 	//==============================// LOAD OBJ FILE //==============================//
 	cyTriMesh mesh;
 	const char* objFilePath;
-	
+
 	if (argc > 1)
 	{
 		objFilePath = argv[1];
 	}
-	
+
 	else
 	{
 		objFilePath = "res/models/teapot.obj";
@@ -2390,7 +2447,7 @@ int main(int argc, char* argv[])
 		auto knitTemp = KnitTemplate();
 		auto purlTemp1 = PurlTemplate1();
 		auto purlTemp2 = PurlTemplate2();
-		
+
 		auto castOnLeft = CastOnTemplateLeft();
 		auto castOnRight = CastOnTemplateRight();
 		auto castOnLoop = CastOnTemplateLoop();
@@ -2408,8 +2465,8 @@ int main(int argc, char* argv[])
 
 		auto selvageCloseLeft = LeftSelvageTemplateBotFinal();
 		auto selvageCloseRight = RightSelvageTemplateBotFinal();
-		
-		
+
+
 		for (int idx = 0; idx < (int)sm.faces.size(); idx++)
 		{
 			auto& face = sm.faces[idx];
@@ -2520,7 +2577,7 @@ int main(int argc, char* argv[])
 
 	//WIREFRAME
 	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-	
+
 	while (!glfwWindowShouldClose(window))
 	{
 		ImGui_ImplOpenGL3_NewFrame();
@@ -2549,7 +2606,7 @@ int main(int argc, char* argv[])
 		glm::mat4 lightView = glm::lookAt(lightPos, meshCenter, cameraUp);
 		glm::mat4 lightSpaceMatrix = lightProjection * lightView;
 
-		
+
 		//================================= ORIGINAL TPOT RENDER =================================//
 		glViewport(0, 0, height, width);
 		glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
@@ -2595,7 +2652,7 @@ int main(int argc, char* argv[])
 
 		yarnVertices.clear();
 		yarnIndices.clear();
-		
+
 		auto SampleTemplate = [&](const std::vector<glm::vec3>& templ, glm::vec3 bl, glm::vec3 br, glm::vec3 tl, glm::vec3 tr, float fixRotation)
 		{
 			glm::vec3 faceNormal = glm::normalize(glm::cross(tr - bl, tl - br));
@@ -2748,7 +2805,7 @@ int main(int argc, char* argv[])
 
 					else
 						SampleTemplate(bindOffOver, bl, br, tl, tr, 0.0f);
-					
+
 					if (idx == (int)sm.faces.size() - sm.nCols + 1 && evenRow)
 						SampleTemplate(bindOffUnderTied, bl, br, tl, tr, 0.0f);
 
@@ -2775,7 +2832,7 @@ int main(int argc, char* argv[])
 					else
 						SampleTemplate(selvageRightBot, bl, br, tl, tr, 360.0f);
 				}
-				
+
 				//The actual stitch mesh
 				else
 				{
@@ -2864,7 +2921,7 @@ int main(int argc, char* argv[])
 	//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++//
 	//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++//
 	//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++//
-	
+
 		//================================ Rendering Light Sources ================================//
 		lightShader.Bind();
 		lightVAO.Bind();
@@ -2982,7 +3039,7 @@ int main(int argc, char* argv[])
 			if (ImGui::SliderFloat("stretch", &kStretch, 0.0f, 10.0f))
 				yarnHack = true;
 		}
-		
+
 		ImGui::NewLine();
 
 		if (ImGui::CollapsingHeader("Neighbor-Aware Parameters"))
