@@ -1938,6 +1938,73 @@ void CollectYarnCurves(StitchMesh& sm, std::vector<std::vector<glm::vec3>>& yarn
 		}
 	}
 }
+// ============================================== EXPORT: SMOBJ ============================================== //
+void ExportSMOBJ(const StitchMesh& sm, const std::string& path)
+{
+	std::ofstream out(path);
+
+	if (!out)
+	{
+		std::cout << "ExportSMOBJ: failed to open " << path << std::endl;
+		return;
+	}
+
+	out << "# exported from Artakha knit sim (fully relaxed state)\n";
+
+	//I think this was noting out the counter clockwise ordering and/or the "library" of faces we are making.
+	out << "L knit -l +y +l -y\n";
+
+	//literally just v and the vertex coordinates of my relaxed nodes
+	for (auto& v : sm.vertices)
+	{
+		out << "v " << v.x << " " << v.y << " " << v.z << "\n";
+	}
+
+	//reordering faces b/c smobj uses a counter clockwise winding. Literally just rewriting since my stichmesh does Z (bl,br,tl,tr)
+	//count 1, 2, 3, 4 and indexing originally started at 0 soooo +1 it is
+	for (auto& f : sm.faces)
+	{
+		out << "f " << (f.bl + 1) << " " << (f.br + 1) << " " << (f.tr + 1) << " " << (f.tl + 1) << "\n";
+	}
+
+	//Not sure but we'll see.  A type from the library but I think they're in the order listed at the top???
+	for (size_t i = 0; i < sm.faces.size(); i++)
+	{
+		out << "T 1\n";
+	}
+
+	//N is optional so I'm skipping that
+
+	auto FaceIndex = [&](int r, int c) 
+	{ 
+		return r * sm.nCols + c; 
+	};
+
+	for (int r = 0; r < sm.nRows; r++)
+	{
+		for (int c = 0; c < sm.nCols; c++)
+		{
+			int idx = FaceIndex(r, c);
+
+			if (r + 1 < sm.nRows)
+			{
+				int up = FaceIndex(r + 1, c);
+				out << "e " << (idx + 1) << "/3 " << (up + 1) << "/-1\n";
+			}
+
+			if (c + 1 < sm.nCols)
+			{
+				int right = FaceIndex(r, c + 1);
+				out << "e " << (idx + 1) << "/2 " << (right + 1) << "/-4\n";
+			}
+		}
+	}
+
+	out.close();
+
+	std::cout << "Wrote " << path << " (" << sm.vertices.size() << " verts, " << sm.faces.size() << " faces)" << std::endl;
+}
+
 
 // ============================================== EXPORT: BCC (yarn curves) ============================================== //
 //   bytes 0-2   "BCC"
@@ -2039,6 +2106,7 @@ void ExportFullyRelaxedKnit(StitchMesh sm, DualGraph dg, float timeStep, float k
 	std::filesystem::create_directories("output");
 	std::vector<std::vector<glm::vec3>> yarnCurves;
 	CollectYarnCurves(sm, yarnCurves);
+	ExportSMOBJ(sm, smobjPath);
 	ExportBCC(yarnCurves, bccPath);
 }
 // ============================================== EXPORT DONE ============================================== //
