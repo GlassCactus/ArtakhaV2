@@ -1975,6 +1975,7 @@ void ExportSMOBJ(const StitchMesh& sm, const std::string& path)
 
 	//N is optional so I'm skipping that
 
+	//was annoying so just did this to retrieve face indices
 	auto FaceIndex = [&](int r, int c) 
 	{ 
 		return r * sm.nCols + c; 
@@ -2029,6 +2030,7 @@ void ExportBCC(const std::vector<std::vector<glm::vec3>>& yarnCurves, const std:
 
 	uint64_t curveCount = 0;
 	uint64_t pointCount = 0;
+
 	for (auto& c : yarnCurves)
 	{
 		if (c.size() < 2) continue; // skip degenerate curves
@@ -2076,6 +2078,7 @@ void ExportBCC(const std::vector<std::vector<glm::vec3>>& yarnCurves, const std:
 // ============================================== RELAX TO CONVERGE + EXPORTING ============================================== //
 // Runs relaxation on a *copy* of sm/dg so it doesn't disturb whatever you're looking at interactively, iterates until the largest per-vertex position
 // change between steps drops below `tol` (or maxIters is hit), then writes.
+
 void ExportFullyRelaxedKnit(StitchMesh sm, DualGraph dg, float timeStep, float kStretch, float kShear, float kWale, float kernelSpring, float boundSpring, float eShear, float eBend, float eSlide, float rCourse, float rWale, bool useNeighborAware, const std::string& smobjPath, const std::string& bccPath, int maxIters = 2000, float tol = 1e-5f)
 {
 	for (int iter = 0; iter < maxIters; iter++)
@@ -2084,12 +2087,15 @@ void ExportFullyRelaxedKnit(StitchMesh sm, DualGraph dg, float timeStep, float k
 
 		if (useNeighborAware)
 			RelaxNeighbor(sm, dg, timeStep, kernelSpring, boundSpring, eShear, eBend, eSlide, rCourse, rWale);
+
 		else
 			Relax(sm, dg, timeStep, kStretch, kShear, kWale, rCourse, rWale);
 
 		float maxDelta = 0.0f;
 		for (size_t v = 0; v < sm.vertices.size(); v++)
+		{
 			maxDelta = glm::max(maxDelta, glm::length(sm.vertices[v] - prev[v]));
+		}
 
 		if (maxDelta < tol)
 		{
@@ -2099,8 +2105,7 @@ void ExportFullyRelaxedKnit(StitchMesh sm, DualGraph dg, float timeStep, float k
 		}
 
 		if (iter == maxIters - 1)
-			std::cout << "ExportFullyRelaxedKnit: hit maxIters (" << maxIters
-			<< ") without reaching tol=" << tol << " -- result may not be fully settled." << std::endl;
+			std::cout << "ExportFullyRelaxedKnit: hit maxIters (" << maxIters << ") without reaching tol=" << tol << " -- result may not be fully settled." << std::endl;
 	}
 
 	std::filesystem::create_directories("output");
