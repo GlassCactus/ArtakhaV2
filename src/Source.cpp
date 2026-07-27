@@ -66,18 +66,17 @@ float quadPitch = 0.0f;
 float quadfov = 45.0f;
 float targetQuadfov = 45.0f;
 
-
 float EPSILON = 0.01f;
 float GAMMA = 2.2f;
 float GRAVITY = 9.8f;
 float MASS = 0.00f;
-
 
 bool takeScreenshot = false;
 bool QUAD = false;	
 bool UImode = false;
 bool showMesh = false;
 bool showDual = false;
+bool colorByRow = false;
 
 float yarnRadius = 0.075f; //radius of thread
 int sides = 8;
@@ -264,8 +263,9 @@ TubeFrame TransportFrame(TubeFrame prev, glm::vec3 newTangent)
 	return { newTangent, newNormal, newBinormal };
 }
 
-void GenerateTube(const std::vector<glm::vec3>& points, const std::vector<glm::vec3> tangents, float radius, int sides, std::vector<float>& vertices, std::vector<unsigned int>& indices, float fixRotation)
+void GenerateTube(const std::vector<glm::vec3>& points, const std::vector<glm::vec3> tangents, float radius, int sides, std::vector<float>& vertices, std::vector<unsigned int>& indices, float row, float fixRotation)
 {
+
 	unsigned int baseVertex = vertices.size() / 8;
 	TubeFrame frame = InitFrame(tangents[0]);
 
@@ -276,15 +276,12 @@ void GenerateTube(const std::vector<glm::vec3>& points, const std::vector<glm::v
 		if (i > 0)
 			frame = TransportFrame(frame, tangents[i]);
 
-		float v = float(i) / float(points.size() - 1.0f);
-
 		for (int s = 0; s < sides; s++)
 		{
 			float angle = (2.0f * PI * float(s) + fix) / float(sides);
 			glm::vec3 circle = radius * (cos(angle) * frame.normal + sin(angle) * frame.binormal);
 			glm::vec3 pos = points[i] + circle;
 			glm::vec3 normal = glm::normalize(circle);
-			float u = float(s) / float(sides);
 
 			vertices.push_back(pos.x);
 			vertices.push_back(pos.y);
@@ -292,8 +289,8 @@ void GenerateTube(const std::vector<glm::vec3>& points, const std::vector<glm::v
 			vertices.push_back(normal.x);
 			vertices.push_back(normal.y);
 			vertices.push_back(normal.z);
-			vertices.push_back(u);
-			vertices.push_back(v);
+			vertices.push_back(row);
+			vertices.push_back(0.0f);
 		}
 	}
 
@@ -1876,8 +1873,10 @@ void CollectYarnCurves(StitchMesh& sm, std::vector<std::vector<glm::vec3>>& yarn
 	for (int idx = 0; idx < (int)sm.faces.size(); idx++)
 	{
 		auto& face = sm.faces[idx];
-		glm::vec3 bl = sm.vertices[face.bl], br = sm.vertices[face.br];
-		glm::vec3 tl = sm.vertices[face.tl], tr = sm.vertices[face.tr];
+		glm::vec3 bl = sm.vertices[face.bl];
+		glm::vec3 br = sm.vertices[face.br];
+		glm::vec3 tl = sm.vertices[face.tl];
+		glm::vec3 tr = sm.vertices[face.tr];
 
 		int col = idx % sm.nCols;
 		int row = idx / sm.nCols;
@@ -1891,6 +1890,7 @@ void CollectYarnCurves(StitchMesh& sm, std::vector<std::vector<glm::vec3>>& yarn
 			{
 				SampleTemplateCurve(castOnLeft, bl, br, tl, tr);
 				SampleTemplateCurve(castOnRight, bl, br, tl, tr);
+
 				if (idx != sm.nCols - 2)
 					SampleTemplateCurve(castOnLoop, bl, br, tl, tr);
 			}
@@ -2430,7 +2430,7 @@ int main(int argc, char* argv[])
 
 		MorphStitchMesh(sm, dg, (MorphType)morphType, morphAmount);
 
-		auto SampleTemplate = [&](const std::vector<glm::vec3>& templ, glm::vec3 bl, glm::vec3 br, glm::vec3 tl, glm::vec3 tr, float fixRotation)
+		auto SampleTemplate = [&](const std::vector<glm::vec3>& templ, glm::vec3 bl, glm::vec3 br, glm::vec3 tl, glm::vec3 tr, float row, float fixRotation)
 		{
 			glm::vec3 faceNormal = glm::normalize(glm::cross(tr - bl, tl - br));
 			std::vector<glm::vec3> ctrl;
@@ -2457,7 +2457,7 @@ int main(int argc, char* argv[])
 				}
 			}
 
-			GenerateTube(pts, tans, yarnRadius, sides, yarnVertices, yarnIndices, fixRotation);
+			GenerateTube(pts, tans, yarnRadius, sides, yarnVertices, yarnIndices, row, fixRotation);
 		};
 
 		auto knitTemp = KnitTemplate();
@@ -2494,19 +2494,21 @@ int main(int argc, char* argv[])
 			int row = idx / sm.nCols;
 			bool evenRow = (row % 2 == 0);
 
+			float rowColoring = row;
+
 			//Cast Ons on the first row
 			if (idx < sm.nCols - 1)
 			{
 				if (idx == 0)
-					SampleTemplate(castOnStart, bl, br, tl, tr, 360.0f);
+					SampleTemplate(castOnStart, bl, br, tl, tr, rowColoring, 360.0f);
 
 				else
 				{
-					SampleTemplate(castOnLeft, bl, br, tl, tr, 360.0f);
-					SampleTemplate(castOnRight, bl, br, tl, tr, 360.0f);
+					SampleTemplate(castOnLeft, bl, br, tl, tr, rowColoring, 360.0f);
+					SampleTemplate(castOnRight, bl, br, tl, tr, rowColoring, 360.0f);
 
 					if (idx != sm.nCols - 2)
-						SampleTemplate(castOnLoop, bl, br, tl, tr, 360.0f);
+						SampleTemplate(castOnLoop, bl, br, tl, tr, rowColoring, 360.0f);
 				}
 
 			}
@@ -2516,13 +2518,13 @@ int main(int argc, char* argv[])
 			//Covers the FINAL selvages on both the right and left sides
 			else if (idx == (int)sm.faces.size() - 1 && evenRow)
 			{
-				SampleTemplate(selvageCloseRight, bl, br, tl, tr, 360.0f);
+				SampleTemplate(selvageCloseRight, bl, br, tl, tr, rowColoring, 360.0f);
 			}
 
 			else if (idx == (int)sm.faces.size() - sm.nCols)
 			{
 				if (!evenRow)
-					SampleTemplate(selvageCloseLeft, bl, br, tl, tr, 360.0f);
+					SampleTemplate(selvageCloseLeft, bl, br, tl, tr, rowColoring, 360.0f);
 
 				else
 					continue;
@@ -2539,44 +2541,44 @@ int main(int argc, char* argv[])
 			else if (idx > (int)sm.faces.size() - sm.nCols)
 			{
 				if (idx == (int)sm.faces.size() - 2 && !evenRow)
-					SampleTemplate(bindOffOverTied, bl, br, tl, tr, 0.0f);
+					SampleTemplate(bindOffOverTied, bl, br, tl, tr, rowColoring, 0.0f);
 
 				else
-					SampleTemplate(bindOffOver, bl, br, tl, tr, 0.0f);
+					SampleTemplate(bindOffOver, bl, br, tl, tr, rowColoring, 0.0f);
 
 				if (idx == (int)sm.faces.size() - sm.nCols + 1 && evenRow)
-					SampleTemplate(bindOffUnderTied, bl, br, tl, tr, 0.0f);
+					SampleTemplate(bindOffUnderTied, bl, br, tl, tr, rowColoring, 0.0f);
 
 				else
-					SampleTemplate(bindOffUnder, bl, br, tl, tr, 0.0f);
+					SampleTemplate(bindOffUnder, bl, br, tl, tr, rowColoring, 0.0f);
 			}
 
 			//Selvage Left
 			else if (col == 0)
 			{
 				if (evenRow)
-					SampleTemplate(selvageLeftTop, bl, br, tl, tr, 360.0f);
+					SampleTemplate(selvageLeftTop, bl, br, tl, tr, rowColoring, 360.0f);
 				else
-					SampleTemplate(selvageLeftBot, bl, br, tl, tr, 360.0f);
+					SampleTemplate(selvageLeftBot, bl, br, tl, tr, rowColoring, 360.0f);
 			}
 
 			//Selvage Right
 			else if (col == sm.nCols - 1)
 			{
 				if (!evenRow)
-					SampleTemplate(selvageRightTop, bl, br, tl, tr, 360.0f);
+					SampleTemplate(selvageRightTop, bl, br, tl, tr, rowColoring, 360.0f);
 
 
 				else
-					SampleTemplate(selvageRightBot, bl, br, tl, tr, 360.0f);
+					SampleTemplate(selvageRightBot, bl, br, tl, tr, rowColoring, 360.0f);
 			}
 
 			//The actual stitch mesh
 			else
 			{
-				SampleTemplate(knitTemp, bl, br, tl, tr, 360.0f);
-				SampleTemplate(purlTemp1, bl, br, tl, tr, 0.0f);
-				SampleTemplate(purlTemp2, bl, br, tl, tr, 0.0f);
+				SampleTemplate(knitTemp, bl, br, tl, tr, rowColoring, 360.0f);
+				SampleTemplate(purlTemp1, bl, br, tl, tr, rowColoring, 0.0f);
+				SampleTemplate(purlTemp2, bl, br, tl, tr, rowColoring, 0.0f);
 			}
 		}
 
@@ -2669,7 +2671,7 @@ int main(int argc, char* argv[])
 		yarnVertices.clear();
 		yarnIndices.clear();
 		
-		auto SampleTemplate = [&](const std::vector<glm::vec3>& templ, glm::vec3 bl, glm::vec3 br, glm::vec3 tl, glm::vec3 tr, float fixRotation)
+		auto SampleTemplate = [&](const std::vector<glm::vec3>& templ, glm::vec3 bl, glm::vec3 br, glm::vec3 tl, glm::vec3 tr, float row, float fixRotation)
 		{
 			glm::vec3 faceNormal = glm::normalize(glm::cross(tr - bl, tl - br));
 
@@ -2696,7 +2698,7 @@ int main(int argc, char* argv[])
 				}
 			}
 
-			GenerateTube(pts, tans, yarnRadius, sides, yarnVertices, yarnIndices, fixRotation);
+			GenerateTube(pts, tans, yarnRadius, sides, yarnVertices, yarnIndices, row, fixRotation);
 		};
 
 		if (showMesh)
@@ -2720,8 +2722,8 @@ int main(int argc, char* argv[])
 					yarnVertices.push_back(n.x);
 					yarnVertices.push_back(n.y);
 					yarnVertices.push_back(n.z);
-					yarnVertices.push_back(uv.x);
 					yarnVertices.push_back(uv.y);
+					yarnVertices.push_back(uv.x);
 				};
 
 				pushVert(bl, { 0,0 });
@@ -2773,20 +2775,21 @@ int main(int argc, char* argv[])
 				int col = idx % sm.nCols;
 				int row = idx / sm.nCols;
 				bool evenRow = (row % 2 == 0);
+				float rowColoring = row / (sm.nRows - 1.0f);
 
 				//Cast Ons on the first row
 				if (idx < sm.nCols - 1)
 				{
 					if (idx == 0)
-						SampleTemplate(castOnStart, bl, br, tl, tr, 360.0f);
+						SampleTemplate(castOnStart, bl, br, tl, tr, rowColoring, 360.0f);
 
 					else
 					{
-						SampleTemplate(castOnLeft, bl, br, tl, tr, 360.0f);
-						SampleTemplate(castOnRight, bl, br, tl, tr, 360.0f);
+						SampleTemplate(castOnLeft, bl, br, tl, tr, rowColoring, 360.0f);
+						SampleTemplate(castOnRight, bl, br, tl, tr, rowColoring, 360.0f);
 
 						if (idx != sm.nCols - 2)
-							SampleTemplate(castOnLoop, bl, br, tl, tr, 360.0f);
+							SampleTemplate(castOnLoop, bl, br, tl, tr, rowColoring, 360.0f);
 					}
 
 				}
@@ -2794,13 +2797,13 @@ int main(int argc, char* argv[])
 				//Covers the FINAL selvages on both the right and left sides
 				else if (idx == (int)sm.faces.size() - 1 && evenRow)
 				{
-					SampleTemplate(selvageCloseRight, bl, br, tl, tr, 360.0f);
+					SampleTemplate(selvageCloseRight, bl, br, tl, tr, rowColoring, 360.0f);
 				}
 
 				else if (idx == (int)sm.faces.size() - sm.nCols)
 				{
 					if (!evenRow)
-						SampleTemplate(selvageCloseLeft, bl, br, tl, tr, 360.0f);
+						SampleTemplate(selvageCloseLeft, bl, br, tl, tr, rowColoring, 360.0f);
 
 					else
 						continue;
@@ -2817,44 +2820,44 @@ int main(int argc, char* argv[])
 				else if (idx > (int)sm.faces.size() - sm.nCols)
 				{
 					if (idx == (int)sm.faces.size() - 2 && !evenRow)
-						SampleTemplate(bindOffOverTied, bl, br, tl, tr, 0.0f);
+						SampleTemplate(bindOffOverTied, bl, br, tl, tr, rowColoring, 0.0f);
 
 					else
-						SampleTemplate(bindOffOver, bl, br, tl, tr, 0.0f);
+						SampleTemplate(bindOffOver, bl, br, tl, tr, rowColoring, 0.0f);
 					
 					if (idx == (int)sm.faces.size() - sm.nCols + 1 && evenRow)
-						SampleTemplate(bindOffUnderTied, bl, br, tl, tr, 0.0f);
+						SampleTemplate(bindOffUnderTied, bl, br, tl, tr, rowColoring, 0.0f);
 
 					else
-						SampleTemplate(bindOffUnder, bl, br, tl, tr, 0.0f);
+						SampleTemplate(bindOffUnder, bl, br, tl, tr, rowColoring, 0.0f);
 				}
 
 				//Selvage Left
 				else if (col == 0)
 				{
 					if (evenRow)
-						SampleTemplate(selvageLeftTop, bl, br, tl, tr, 360.0f);
+						SampleTemplate(selvageLeftTop, bl, br, tl, tr, rowColoring, 360.0f);
 					else
-						SampleTemplate(selvageLeftBot, bl, br, tl, tr, 360.0f);
+						SampleTemplate(selvageLeftBot, bl, br, tl, tr, rowColoring, 360.0f);
 				}
 
 				//Selvage Right
 				else if (col == sm.nCols - 1)
 				{
 					if (!evenRow)
-						SampleTemplate(selvageRightTop, bl, br, tl, tr, 360.0f);
+						SampleTemplate(selvageRightTop, bl, br, tl, tr, rowColoring, 360.0f);
 
 
 					else
-						SampleTemplate(selvageRightBot, bl, br, tl, tr, 360.0f);
+						SampleTemplate(selvageRightBot, bl, br, tl, tr, rowColoring, 360.0f);
 				}
 				
 				//The actual stitch mesh
 				else
 				{
-					SampleTemplate(knitTemp, bl, br, tl, tr, 360.0f);
-					SampleTemplate(purlTemp1, bl, br, tl, tr, 0.0f);
-					SampleTemplate(purlTemp2, bl, br, tl, tr, 0.0f);
+					SampleTemplate(knitTemp, bl, br, tl, tr, rowColoring, 360.0f);
+					SampleTemplate(purlTemp1, bl, br, tl, tr, rowColoring, 0.0f);
+					SampleTemplate(purlTemp2, bl, br, tl, tr, rowColoring, 0.0f);
 				}
 
 
@@ -2900,7 +2903,8 @@ int main(int argc, char* argv[])
 
 		glm::mat4 yarnModel = glm::mat4(1.0f);
 		yarnModel = glm::translate(yarnModel, meshCenter);
-		yarnModel = glm::rotate(yarnModel, glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+		yarnModel = glm::rotate(yarnModel, glm::radians(180.0f), glm::vec3(1.0f, 0.0f, 0.0f)); //180 to have it on the "upright"
+		//yarnModel = glm::rotate(yarnModel, glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f)); //-90 to have it on the "floor"
 
 		glm::mat4 yarnNormalMat = transpose(inverse(yarnModel));
 
@@ -2915,6 +2919,8 @@ int main(int argc, char* argv[])
 		yarnShader.SetUniform3v("lightPos", lightPos);
 		yarnShader.SetUniform3v("lightColor", lightColor);
 		yarnShader.SetUniformMat4f("lightSpaceMatrix", lightSpaceMatrix);
+
+		yarnShader.SetUniform1i("colorByRow", colorByRow);
 
 		//When I eventually add the Fiber level rendering portion. These should be the parameters according to the paper minus the LoD part.
 		//yarnShader.SetUniform1i("nFiberMax", 30);
@@ -3007,6 +3013,8 @@ int main(int argc, char* argv[])
 
 		ImGui::Checkbox("Show Mesh", &showMesh);
 		ImGui::Checkbox("Show Dual Graph", &showDual);
+
+		ImGui::Checkbox("Color by Row", &colorByRow);
 
 		const char* methods[] = { "Original", "Neighbor-Aware", "Pause"};
 		ImGui::Combo("Relaxation Methods", &currentMethod, methods, IM_ARRAYSIZE(methods));
