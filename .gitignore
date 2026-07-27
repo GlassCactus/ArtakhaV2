@@ -19,6 +19,9 @@ Release/
 *.obj
 *.ipch
 
+# Screenshots
+screenshots/
+
 # CMake build folders (if used)
 build/
 CMakeFiles/

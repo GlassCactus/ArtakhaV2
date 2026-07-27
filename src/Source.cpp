@@ -2959,7 +2959,7 @@ int main(int argc, char* argv[])
 
 		glm::mat4 yarnModel = glm::mat4(1.0f);
 		yarnModel = glm::translate(yarnModel, meshCenter);
-		yarnModel = glm::rotate(yarnModel, glm::radians(180.0f), glm::vec3(1.0f, 0.0f, 0.0f)); //180 to have it on the "upright"
+		yarnModel = glm::rotate(yarnModel, glm::radians(180.0f), glm::vec3(0.0f, 0.0f, 1.0f)); //180 to have it on the "upright"
 		//yarnModel = glm::rotate(yarnModel, glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f)); //-90 to have it on the "floor"
 
 		glm::mat4 yarnNormalMat = transpose(inverse(yarnModel));
