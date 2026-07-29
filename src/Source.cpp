@@ -131,8 +131,15 @@ void TakeScreenshot(const std::string& filename, int width, int height)
 		memcpy(flipped.data() + y * rowSize, pixels.data() + (height - 1 - y) * rowSize, rowSize);
 	}
 	
-	stbi_write_png(filename.c_str(), width, height, 3, flipped.data(), rowSize);
-	std::cout << "Screenshot saved: " << filename << std::endl;
+	// A fresh clone only carries screenshots/.gitkeep, and the folder may have
+	// been deleted since, so make sure it exists before writing into it.
+	std::filesystem::create_directories("screenshots");
+
+	if (stbi_write_png(filename.c_str(), width, height, 3, flipped.data(), rowSize))
+		std::cout << "Screenshot saved: " << filename << std::endl;
+
+	else
+		std::cout << "Failed to save screenshot: " << filename << std::endl;
 }
 
 std::string GetScreenshotFilename()
@@ -2385,12 +2392,12 @@ int main(int argc, char* argv[])
 		"res/textures/ArstaBridge/front.jpg",
 		"res/textures/ArstaBridge/back.jpg"},
 
-		{"res/textures/Studio/right.png",
-		"res/textures/Studio/left.png",
-		"res/textures/Studio/top.png",
-		"res/textures/Studio/bottom.png",
-		"res/textures/Studio/front.png",
-		"res/textures/Studio/back.png"}
+		{"res/textures/Studio/right.jpg",
+		"res/textures/Studio/left.jpg",
+		"res/textures/Studio/top.jpg",
+		"res/textures/Studio/bottom.jpg",
+		"res/textures/Studio/front.jpg",
+		"res/textures/Studio/back.jpg"}
 	};
 
 	// Cubemaps load on first use. Texture name 0 is never a valid GL object,

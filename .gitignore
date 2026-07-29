@@ -19,8 +19,11 @@ Release/
 *.obj
 *.ipch
 
-# Screenshots
-screenshots/
+# Screenshots — keep the folder (so F5 works on a fresh clone), ignore the shots.
+# Must be "screenshots/*", not "screenshots/": a trailing-slash rule makes git skip
+# the directory entirely and the .gitkeep negation below would never be seen.
+screenshots/*
+!screenshots/.gitkeep
 
 # CMake build folders (if used)
 build/
