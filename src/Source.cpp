@@ -2177,9 +2177,10 @@ int main(int argc, char* argv[])
 {
 	glfwInit();
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1); //4.1 is the ceiling on macOS, and we use nothing newer.
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-	glfwWindowHint(GLFW_SAMPLES, 4); //Very simple Antialiasing. 
+	glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GLFW_TRUE); //Required for a core context on macOS.
+	glfwWindowHint(GLFW_SAMPLES, 4); //Very simple Antialiasing.
 	
 	GLFWwindow* window = glfwCreateWindow(height, width, "Artakha Renderer", NULL, NULL);
 
@@ -2392,12 +2393,21 @@ int main(int argc, char* argv[])
 		"res/textures/Studio/back.png"}
 	};
 
-	std::vector<unsigned int> skyboxTextures;
-	for (auto& faces : skyboxFaces)
-		skyboxTextures.push_back(LoadCubeMap(faces));
+	// Cubemaps load on first use. Texture name 0 is never a valid GL object,
+	// so it doubles as the "not loaded yet" marker. Loading every skybox up
+	// front cost ~1.9 GiB of VRAM at startup, most of it for ones never picked.
+	std::vector<unsigned int> skyboxTextures(skyboxFaces.size(), 0);
+
+	auto GetCubeMap = [&](int index) -> unsigned int
+	{
+		if (skyboxTextures[index] == 0)
+			skyboxTextures[index] = LoadCubeMap(skyboxFaces[index]);
+
+		return skyboxTextures[index];
+	};
 
 	int currentCubemap = 0;
-	unsigned int cubemapTexture = skyboxTextures[currentCubemap];
+	unsigned int cubemapTexture = GetCubeMap(currentCubemap);
 	VertexArray cubemapVAO;
 	VertexBuffer cubemapVBO(cubemapVertices, sizeof(cubemapVertices));
 	VertexBufferLayout cubemapLayout;
@@ -2468,7 +2478,7 @@ int main(int argc, char* argv[])
 	ImGuiIO& io = ImGui::GetIO(); (void)io;
 	ImGui::StyleColorsDark();
 	ImGui_ImplGlfw_InitForOpenGL(window, true);
-	ImGui_ImplOpenGL3_Init("#version 460");
+	ImGui_ImplOpenGL3_Init("#version 410"); //Must match the context version requested in main().
 
 	auto RegenerateKnit = [&]()
 	{
@@ -2682,13 +2692,18 @@ int main(int argc, char* argv[])
 
 		
 		//================================= ORIGINAL TPOT RENDER =================================//
-		glViewport(0, 0, height, width);
+		// Framebuffer size, not window size: on a HiDPI/Retina display the window is measured
+		// in points and the framebuffer in pixels (2x). This also restores the viewport after
+		// the shadow pass below, and lets the window be resized.
+		int fbWidth, fbHeight;
+		glfwGetFramebufferSize(window, &fbWidth, &fbHeight);
+		glViewport(0, 0, fbWidth, fbHeight);
 		glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		glEnable(GL_DEPTH_TEST);
 
 		glm::mat4 view = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
-		glm::mat4 projection = glm::perspective(glm::radians(fov), float(height) / float(width), nearPlane, farPlane);
+		glm::mat4 projection = glm::perspective(glm::radians(fov), float(fbWidth) / float(fbHeight), nearPlane, farPlane);
 
 		//==================================== RENDER SKYBOX ====================================//
 		glDepthMask(GL_FALSE);
@@ -2696,7 +2711,7 @@ int main(int argc, char* argv[])
 		cubemapShader.Bind();
 
 		glm::mat4 cubemapView = glm::mat4(glm::mat3(view));
-		glm::mat4 cubemapProjection = glm::perspective(glm::radians(45.0f), float(height) / float(width), nearPlane, farPlane);;
+		glm::mat4 cubemapProjection = glm::perspective(glm::radians(45.0f), float(fbWidth) / float(fbHeight), nearPlane, farPlane);
 		cubemapShader.SetUniformMat4f("view", cubemapView);
 		cubemapShader.SetUniformMat4f("projection", cubemapProjection);
 		cubemapVAO.Bind();
@@ -3036,7 +3051,7 @@ int main(int argc, char* argv[])
 
 		if (ImGui::Combo("Skybox", &currentCubemap, skyboxNames, 5))
 		{
-			cubemapTexture = skyboxTextures[currentCubemap];
+			cubemapTexture = GetCubeMap(currentCubemap);
 		}
 
 		ImGui::SetNextItemOpen(true, ImGuiCond_Once);

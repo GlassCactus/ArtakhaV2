@@ -54,7 +54,7 @@ yarn-level cloth tools.
 | Library | Purpose |
 |---|---|
 | [GLFW](https://www.glfw.org/) | Windowing, input |
-| [GLAD](https://glad.dav1d.de/) | OpenGL 4.6 core loader |
+| [GLAD](https://glad.dav1d.de/) | OpenGL core loader (generated for 3.3, vendored in `external/`) |
 | [Dear ImGui](https://github.com/ocornut/imgui) | Control panel UI |
 | [stb_image / stb_image_write](https://github.com/nothings/stb) | Texture loading, screenshot PNG export |
 | [GLM](https://github.com/g-truc/glm) | Math (vectors, matrices, transforms) |
@@ -62,7 +62,36 @@ yarn-level cloth tools.
 | [cyCodeBase](https://www.cemyuksel.com/cyCodeBase/) (`cyTriMesh`) | OBJ mesh loading | (unused for now)
 
 ## Building
-I'll update this later
+
+Builds on **macOS** and **Windows** from the same `CMakeLists.txt`. Everything is
+either vendored in this repo (GLAD, ImGui, GLM, stb) or fetched automatically on
+the first configure (GLFW 3.4, Eigen 5.0.0) — there is no per-developer setup, so
+a fresh clone builds as-is. The first configure needs an internet connection.
+
+**macOS** (requires CMake 3.26+ and the Xcode command line tools):
+
+```sh
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build -j
+./build/ArtakhaV2
+```
+
+**Windows** (Visual Studio 2022): `File → Open → Folder…` and pick this folder.
+VS configures from `CMakeLists.txt` automatically, then `Build → Build All`.
+Or from the command line:
+
+```sh
+cmake -S . -B build
+cmake --build build --config Release
+```
+
+The build copies `res/` and `imgui.ini` next to the executable, so it runs
+correctly regardless of the working directory it is launched from.
+
+> **OpenGL version.** Both platforms target **OpenGL 4.1 core / GLSL 410**. macOS
+> caps out at 4.1, and nothing here needs anything newer — so there is one shader
+> set and one GLAD loader rather than a per-platform split. Note that Apple has
+> deprecated OpenGL; it still works, but will not advance past 4.1.
 
 ## Controls
 

@@ -1,23 +1,25 @@
 # ============================================================================
-#  ArtakhaV2 - CMake build
+#  ArtakhaV2 - CMake build  (macOS + Windows)
 # ============================================================================
-#  Auto-fetches GLFW and Eigen from the internet the first time you configure.
-#  Reuses the glad.c already in this repo.
-#
-#  YOU MUST STILL PROVIDE THE GLAD HEADERS ONCE (they are code-generated):
-#    1. Go to https://glad.dav1d.de
-#       Language: C/C++ | API gl: 3.3 (or higher) | Profile: Core
-#       tick "Generate a loader" -> Generate -> download the zip
-#    2. From the zip's "include" folder, copy these into this project so you get:
-#         external/include/glad/glad.h
-#         external/include/KHR/khrplatform.h
-#
-#  Then in Visual Studio 2022:  File -> Open -> Folder...  (pick this folder)
-#  VS will configure automatically, then Build -> Build All.
+#  Everything needed is either vendored in this repo (GLAD, ImGui, GLM, stb)
+#  or fetched automatically on first configure (GLFW, Eigen).  There is no
+#  per-developer setup -- a fresh clone builds as-is.
 #  (First configure needs an internet connection for GLFW + Eigen.)
+#
+#  macOS / command line:
+#      cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+#      cmake --build build -j
+#      ./build/ArtakhaV2
+#
+#  Windows / Visual Studio 2022:
+#      File -> Open -> Folder...  (pick this folder)
+#      VS configures automatically, then Build -> Build All.
+#
+#  Targets OpenGL 4.1 core / GLSL 410 on both platforms -- that is the
+#  ceiling on macOS, and nothing here needs anything newer.
 # ============================================================================
 
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.26)   # copy_directory_if_different (below) needs 3.26
 project(ArtakhaV2 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
@@ -52,15 +54,15 @@ FetchContent_MakeAvailable(glfw)
 #  include path.  Change EIGEN_GIT_TAG below if 5.0.0 is unavailable (e.g. 3.4.0).
 set(EIGEN_GIT_TAG "5.0.0" CACHE STRING "Eigen git tag to fetch")
 set(EIGEN_ROOT "${CMAKE_BINARY_DIR}/eigen-root")
+#  SOURCE_SUBDIR points at a path that does not exist on purpose: that makes
+#  FetchContent download the headers without running Eigen's own CMake build.
 FetchContent_Declare(eigen
     GIT_REPOSITORY https://gitlab.com/libeigen/eigen.git
     GIT_TAG        ${EIGEN_GIT_TAG}
     SOURCE_DIR     "${EIGEN_ROOT}/eigen-5.0.0"
+    SOURCE_SUBDIR  "do-not-configure-eigen"
 )
-FetchContent_GetProperties(eigen)
-if(NOT eigen_POPULATED)
-    FetchContent_Populate(eigen)   # download headers only, do not run Eigen's CMake
-endif()
+FetchContent_MakeAvailable(eigen)
 
 # --- ImGui sources (vendored in this repo) -----------------------------------
 set(IMGUI_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/vendor/imgui")
@@ -97,7 +99,11 @@ target_include_directories(ArtakhaV2 PRIVATE
 )
 
 # GLFW's glfw3.h comes from the glfw target's own interface include dirs.
-target_link_libraries(ArtakhaV2 PRIVATE glfw opengl32)
+# The glfw target also carries Cocoa/IOKit/CoreFoundation on macOS and gdi32 on
+# Windows through its interface link libraries, so only GL itself is needed here.
+set(OpenGL_GL_PREFERENCE GLVND)   # no-op on Win/Mac, picks the modern lib on Linux
+find_package(OpenGL REQUIRED)
+target_link_libraries(ArtakhaV2 PRIVATE glfw OpenGL::GL)
 
 # Stop GLFW from pulling in the system OpenGL header (glad provides it).
 # Needed because Source.cpp includes <GLFW/glfw3.h> before <glad/glad.h>.
@@ -105,7 +111,19 @@ target_compile_definitions(ArtakhaV2 PRIVATE GLFW_INCLUDE_NONE)
 
 if(MSVC)
     target_compile_definitions(ArtakhaV2 PRIVATE _CRT_SECURE_NO_WARNINGS NOMINMAX)
-    target_compile_options(ArtakhaV2 PRIVATE /arch:AVX2)   # matches the .vcxproj (AVX2 for Eigen)
+    target_compile_options(ArtakhaV2 PRIVATE /arch:AVX2)   # AVX2 for Eigen
+endif()
+
+# Apple deprecated OpenGL in 10.14; it still works fine, we just don't want the
+# warning on every single GL call in the build log.
+if(APPLE)
+    target_compile_options(ArtakhaV2 PRIVATE -Wno-deprecated-declarations)
+endif()
+
+# cyCore.h unconditionally includes <immintrin.h> (x86 SSE/AVX intrinsics) unless
+# this is defined. That header does not exist on ARM -- e.g. Apple Silicon.
+if(NOT CMAKE_SYSTEM_PROCESSOR MATCHES "^(x86_64|AMD64|i[3-6]86)$")
+    target_compile_definitions(ArtakhaV2 PRIVATE CY_NO_INTRIN_H)
 endif()
 
 # Run from the project root so it finds res\shaders, res\textures and imgui.ini

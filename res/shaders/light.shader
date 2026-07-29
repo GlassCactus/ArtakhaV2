@@ -1,5 +1,5 @@
 #shader vertex
-#version 460 core
+#version 410 core
 
 layout(location = 0) in vec3 pos;
 
@@ -16,7 +16,7 @@ void main()
 //==============================================================================================================//
 
 #shader fragment
-#version 460 core
+#version 410 core
 
 out vec4 FragColor;
 uniform vec3 lightColor;
