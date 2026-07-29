@@ -27,14 +27,14 @@ yarn-level cloth tools.**
 
 ## Features
 
-| *Feature* | | Description |
-| :--- | :---: | :--- |
-| **Procedural stitch mesh** | ![mesh](https://img.shields.io/badge/mesh-27AE60) | configurable rows/columns, course/wale rest lengths, built on a quad grid with a dual graph for neighbor-aware forces. |
-| **Two relaxation solvers** | ![solver](https://img.shields.io/badge/solver-8E44AD) | swappable at runtime:<br>• *Original* — per-vertex Newton step (stretch, shear, wale-bend springs).<br>• *Neighbor-Aware* — global sparse Newton solve over the dual graph (kernel/boundary springs, shear, bend, slide energies) via `Eigen::ConjugateGradient`. |
-| **Procedural yarn geometry** | ![yarn](https://img.shields.io/badge/yarn-BE0000) | per-stitch template curves (knit, purl, cast-on, bind-off, left/right selvage) sampled with Catmull-Rom splines and swept into tubes with parallel-transport frames. |
-| **Mesh morphing** | ![morph](https://img.shields.io/badge/morph-F39C12) | bend, twist, stretch, shear, or wrap the relaxed swatch onto a sphere for garment-shaping previews. |
-| **Full render pipeline** | ![render](https://img.shields.io/badge/render-F26430) | shadow-mapped directional light, 5 selectable skyboxes, gamma correction, live ImGui control panel. |
-| **One-click export** | ![i/o](https://img.shields.io/badge/i%2Fo-546E7A) | relax to convergence and write out `.smobj` + `.bcc` for the current swatch. |
+| *Feature* | Description |
+| :--- | :--- |
+| **Procedural stitch mesh**<br>![mesh](https://img.shields.io/badge/mesh-27AE60?style=for-the-badge) | configurable rows/columns, course/wale rest lengths, built on a quad grid with a dual graph for neighbor-aware forces. |
+| **Two relaxation solvers**<br>![solver](https://img.shields.io/badge/solver-8E44AD?style=for-the-badge) | swappable at runtime:<br>• *Original* — per-vertex Newton step (stretch, shear, wale-bend springs).<br>• *Neighbor-Aware* — global sparse Newton solve over the dual graph (kernel/boundary springs, shear, bend, slide energies) via `Eigen::ConjugateGradient`. |
+| **Procedural yarn geometry**<br>![yarn](https://img.shields.io/badge/yarn-BE0000?style=for-the-badge) | per-stitch template curves (knit, purl, cast-on, bind-off, left/right selvage) sampled with Catmull-Rom splines and swept into tubes with parallel-transport frames. |
+| **Mesh morphing**<br>![morph](https://img.shields.io/badge/morph-F39C12?style=for-the-badge) | bend, twist, stretch, shear, or wrap the relaxed swatch onto a sphere for garment-shaping previews. |
+| **Full render pipeline**<br>![render](https://img.shields.io/badge/render-F26430?style=for-the-badge) | shadow-mapped directional light, 5 selectable skyboxes, gamma correction, live ImGui control panel. |
+| **One-click export**<br>![i/o](https://img.shields.io/badge/i%2Fo-546E7A?style=for-the-badge) | relax to convergence and write out `.smobj` + `.bcc` for the current swatch. |
 
 ## Gallery
 
@@ -105,10 +105,10 @@ correctly regardless of the working directory it is launched from.
 The stitch mesh starts as a flat grid and is relaxed toward a physically
 plausible knit shape:
 
-| *Solver* | | Method |
-| :--- | :---: | :--- |
-| **Original** (`Relax`) | ![local](https://img.shields.io/badge/local-1E88E5) | solves a local per-vertex Newton step using stretch springs (course, wale, and both diagonals) and shear terms across each quad face, plus a wale-bending term across three vertically-stacked rows. |
-| **Neighbor-Aware** (`RelaxNeighbor`) | ![global](https://img.shields.io/badge/global-8E44AD) | builds a full sparse Hessian over the *dual graph* (one node per stitch) with kernel/boundary springs, bilinear shear, a cosine bending energy, and a slide energy, then solves the whole system at once with a conjugate-gradient solver. Vertex positions are recovered from the relaxed dual nodes via a weighted average of the four (or fewer, at boundaries) surrounding stitch centers. |
+| *Solver* | Method |
+| :--- | :--- |
+| **Original** (`Relax`)<br>![local](https://img.shields.io/badge/local-1E88E5?style=for-the-badge) | solves a local per-vertex Newton step using stretch springs (course, wale, and both diagonals) and shear terms across each quad face, plus a wale-bending term across three vertically-stacked rows. |
+| **Neighbor-Aware** (`RelaxNeighbor`)<br>![global](https://img.shields.io/badge/global-8E44AD?style=for-the-badge) | builds a full sparse Hessian over the *dual graph* (one node per stitch) with kernel/boundary springs, bilinear shear, a cosine bending energy, and a slide energy, then solves the whole system at once with a conjugate-gradient solver. Vertex positions are recovered from the relaxed dual nodes via a weighted average of the four (or fewer, at boundaries) surrounding stitch centers. |
 
 Both are exposed live in the ImGui panel so you can compare convergence
 behavior and tune spring/energy constants per run.
@@ -119,10 +119,10 @@ Clicking **Export Relaxed (smobj + bcc)** relaxes a *copy* of the current
 mesh to convergence (max per-vertex delta below tolerance, or a max
 iteration cap), then writes:
 
-| *File* | | Contents |
-| :--- | :---: | :--- |
-| [`output/relaxed_stitch.smobj`](output/relaxed_stitch.smobj) | ![topology](https://img.shields.io/badge/topology-27AE60) | the stitch-mesh topology in the [augmented stitch mesh format](https://github.com/textiles-lab/smobj) (vertices, quad faces, a single generic `knit` face type, and edge-to-edge connectivity derived from the grid's shared vertices). |
-| [`output/relaxed_yarn.bcc`](output/relaxed_yarn.bcc) | ![curves](https://img.shields.io/badge/curves-BE0000) | yarn centerlines in Cem Yuksel's [Binary Curve Collection format](https://www.cemyuksel.com/research/yarnmodels/), sampled per stitch template (knit/purl/cast-on/bind-off/selvage) as open Catmull-Rom curves, up-axis Y. |
+| *File* | Contents |
+| :--- | :--- |
+| [`output/relaxed_stitch.smobj`](output/relaxed_stitch.smobj)<br>![topology](https://img.shields.io/badge/topology-27AE60?style=for-the-badge) | the stitch-mesh topology in the [augmented stitch mesh format](https://github.com/textiles-lab/smobj) (vertices, quad faces, a single generic `knit` face type, and edge-to-edge connectivity derived from the grid's shared vertices). |
+| [`output/relaxed_yarn.bcc`](output/relaxed_yarn.bcc)<br>![curves](https://img.shields.io/badge/curves-BE0000?style=for-the-badge) | yarn centerlines in Cem Yuksel's [Binary Curve Collection format](https://www.cemyuksel.com/research/yarnmodels/), sampled per stitch template (knit/purl/cast-on/bind-off/selvage) as open Catmull-Rom curves, up-axis Y. |
 
 ## Project layout
 
