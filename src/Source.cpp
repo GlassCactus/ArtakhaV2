@@ -1952,6 +1952,92 @@ void CollectYarnCurves(StitchMesh& sm, std::vector<std::vector<glm::vec3>>& yarn
 // ============================================== EXPORT: SMOBJ ============================================== //
 void ExportSMOBJ(const StitchMesh& sm, const std::string& path)
 {
+	// The face classifier and the connectivity loop below both assume faces are
+	// stored row-major, exactly as BuildStitchMesh emits them.
+	if ((int)sm.faces.size() != sm.nRows * sm.nCols)
+	{
+		std::cout << "ExportSMOBJ: face count " << sm.faces.size() << " != nRows*nCols ("
+			<< sm.nRows << "*" << sm.nCols << ") -- refusing to write a mislabelled file" << std::endl;
+		return;
+	}
+
+	// One smobj face type per (course, column, direction) class.
+	//
+	// Knitting runs opposite to geometric row order: CollectYarnCurves flips the row
+	// index (rrow) so the borders match the mirrored render, and this has to agree
+	// with it or the .smobj and .bcc end up describing the same swatch upside-down
+	// from each other. Cast-on is therefore the highest geometric row, and loops
+	// flow downward -- a face takes its loop from the row above and passes it below.
+	//
+	// Edge labels are listed CCW from the lower-left corner: bottom, right, top, left
+	// (sm.cpp resolves edge e as face[e] -> face[(e+1) % n], so 1=bottom .. 4=left).
+	//   lN   loop edge carrying N loops; l0 means the fabric ends on that side
+	//   yN   yarn edge carrying N yarns
+	//   x    empty edge, nothing crosses it (the selvage)
+	//   -/+  in / out
+	auto FaceKey = [&](int row, int col)
+	{
+		int  rrow      = (sm.nRows - 1) - row;    // knitting order; see CollectYarnCurves
+		bool rightward = (rrow % 2 == 0);         // per its selvageClose{Right,Left} cases
+		bool firstK    = (rrow == 0);             // cast-on course
+		bool lastK     = (rrow == sm.nRows - 1);  // bind-off course
+		bool firstCol  = (col == 0);
+		bool lastCol   = (col == sm.nCols - 1);
+
+		std::string top    = firstK ? "-l0" : "-l1";   // loop in, from the row above
+		std::string bottom = lastK  ? "+l0" : "+l1";   // loop out, to the row below
+
+		std::string yarnIn  = ((rightward ? firstCol : lastCol) ? "x" : "-y1");
+		std::string yarnOut = ((rightward ? lastCol : firstCol) ? "x" : "+y1");
+
+		std::string left  = rightward ? yarnIn  : yarnOut;
+		std::string right = rightward ? yarnOut : yarnIn;
+
+		std::string name = (firstK && lastK) ? "single-course"
+			: firstK ? "cast-on"
+			: lastK  ? "bind-off"
+			: "knit";
+
+		name += rightward ? "-to-right" : "-to-left";
+
+		if (firstCol) name += "-selvage-l";
+		if (lastCol)  name += "-selvage-r";
+
+		return name + " " + bottom + " " + right + " " + top + " " + left;
+	};
+
+	// Collect the types actually used, in first-seen order, and record each face's
+	// 1-based index into that library. Linear search is fine: a swatch of any size
+	// only ever produces about a dozen distinct types.
+	std::vector<std::string> library;
+	std::vector<int> faceTypes(sm.faces.size());
+
+	for (int r = 0; r < sm.nRows; r++)
+	{
+		for (int c = 0; c < sm.nCols; c++)
+		{
+			std::string key = FaceKey(r, c);
+			int type = 0;
+
+			for (size_t i = 0; i < library.size(); i++)
+			{
+				if (library[i] == key)
+				{
+					type = (int)i + 1;
+					break;
+				}
+			}
+
+			if (type == 0)
+			{
+				library.push_back(key);
+				type = (int)library.size();
+			}
+
+			faceTypes[r * sm.nCols + c] = type;
+		}
+	}
+
 	std::ofstream out(path);
 
 	if (!out)
@@ -1961,9 +2047,16 @@ void ExportSMOBJ(const StitchMesh& sm, const std::string& path)
 	}
 
 	out << "# exported from Artakha knit sim (fully relaxed state)\n";
+	out << "# NOTE: knitting runs top-to-bottom in these coordinates -- cast-on is the\n";
+	out << "#       highest row. Bottom edges are loop-out (+l), top edges loop-in (-l).\n";
+	out << "#       This matches the row flip in CollectYarnCurves, so the .smobj and the\n";
+	out << "#       .bcc describe the same fabric. It is inverted vs faces/knitout.sf.\n";
 
-	//I think this was noting out the counter clockwise ordering and/or the "library" of faces we are making.
-	out << "L knit -l +y +l -y\n";
+	//the face type library: name followed by its edge types, CCW from the lower left
+	for (const auto& entry : library)
+	{
+		out << "L " << entry << "\n";
+	}
 
 	//literally just v and the vertex coordinates of my relaxed nodes
 	for (auto& v : sm.vertices)
@@ -1978,10 +2071,10 @@ void ExportSMOBJ(const StitchMesh& sm, const std::string& path)
 		out << "f " << (f.bl + 1) << " " << (f.br + 1) << " " << (f.tr + 1) << " " << (f.tl + 1) << "\n";
 	}
 
-	//Not sure but we'll see.  A type from the library but I think they're in the order listed at the top???
-	for (size_t i = 0; i < sm.faces.size(); i++)
+	//one 1-based library index per face, in the same order the faces were written
+	for (int type : faceTypes)
 	{
-		out << "T 1\n";
+		out << "T " << type << "\n";
 	}
 
 	//N is optional so I'm skipping that
@@ -2014,7 +2107,8 @@ void ExportSMOBJ(const StitchMesh& sm, const std::string& path)
 
 	out.close();
 
-	std::cout << "Wrote " << path << " (" << sm.vertices.size() << " verts, " << sm.faces.size() << " faces)" << std::endl;
+	std::cout << "Wrote " << path << " (" << sm.vertices.size() << " verts, " << sm.faces.size()
+		<< " faces, " << library.size() << " face types)" << std::endl;
 }
 
 
@@ -2086,56 +2180,6 @@ void ExportBCC(const std::vector<std::vector<glm::vec3>>& yarnCurves, const std:
 	std::cout << "Wrote " << path << " (" << curveCount << " curves, " << pointCount << " points)" << std::endl;
 }
 
-// ============================================== EXPORT: SMOBJ (stitch mesh OBJ) ============================================== //
-void WriteSMobj(const StitchMesh& sm, const std::string& path)
-	{
-		std::ofstream out(path);
-		if (!out)
-		{
-			std::cout << "WriteSMobj: failed to open " << path << std::endl;
-			return;
-		}
-
-		// classify face idx
-		auto faceType = [&](int idx) -> int
-			{
-				int col = idx % sm.nCols;
-				int row = idx / sm.nCols;
-				bool evenRow = (row % 2 == 0);
-				int nF = (int)sm.faces.size();
-				if (idx < sm.nCols - 1) return 1;                   // bottom row: cast-on -> tuck-twist-
-				if (idx == nF - 1 && evenRow) return 4;             // selvage close right -> edge)
-				if (idx == nF - sm.nCols) return 2;                 // selvage close left  -> edge(
-				if (idx == nF - 1 || idx == sm.nCols - 1) return 2; // skipped corners     -> edge(
-				if (idx > nF - sm.nCols) return 6;                  // top row: bind-off   -> drop
-				if (col == 0) return 2;                             // left selvage        -> edge(
-				if (col == sm.nCols - 1) return 4;                  // right selvage       -> edge)
-				return evenRow ? 3 : 5;                             // interior knit+ / knit-
-			};
-
-		out << "# exported from Artakha knit sim (stitch mesh, relaxed state)\n";
-		// type library
-		out << "L tuck-twist- -lX -yX +lX +yX\n";   // 1  cast-on (bottom row)
-		out << "L edge( x -y1 +y1 x x\n";           // 2  left selvage / corners
-		out << "L knit+ -lX +yX +lX -yX\n";         // 3  interior, even row
-		out << "L edge) x x x +y1 -y1\n";           // 4  right selvage
-		out << "L knit- -lX -yX +lX +yX\n";         // 5  interior, odd row
-		out << "L drop -l1 +y0 +l0 -y0\n";          // 6  bind-off (top row)
-
-		for (const auto& p : sm.vertices)
-			out << "v " << p.x << " " << p.y << " " << p.z << "\n";
-
-		// winding bl -> br -> tr -> tl
-		for (const auto& f : sm.faces)
-			out << "f " << (f.bl + 1) << " " << (f.br + 1) << " " << (f.tr + 1) << " " << (f.tl + 1) << "\n";
-
-		for (int i = 0; i < (int)sm.faces.size(); i++)
-			out << "T " << faceType(i) << "\n";
-
-		out.close();
-		std::cout << "Wrote " << path << " (" << sm.vertices.size() << " verts, " << sm.faces.size() << " faces, typed)" << std::endl;
-	}
-// ============================================= EXPORT DONE ==============================================
 
 // ============================================== RELAX TO CONVERGE + EXPORTING ============================================== //
 // Runs relaxation on a *copy* of sm/dg so it doesn't disturb whatever you're looking at interactively, iterates until the largest per-vertex position
@@ -2171,7 +2215,6 @@ void ExportFullyRelaxedKnit(StitchMesh sm, DualGraph dg, float timeStep, float k
 	}
 
 	std::filesystem::create_directories("output");
-	WriteSMobj(sm, smobjPath);
 	std::vector<std::vector<glm::vec3>> yarnCurves;
 	CollectYarnCurves(sm, yarnCurves);
 	ExportSMOBJ(sm, smobjPath);
@@ -2495,7 +2538,7 @@ int main(int argc, char* argv[])
 		int nRows = iRows + 2;
 		int nCols = iCols + 2;
 
-		BuildStitchMesh(sm, nRows, nCols, stitchHeight, stitchWidth);
+		BuildStitchMesh(sm, nRows, nCols, stitchWidth, stitchHeight);
 		BuildDualGraph(sm, dg);
 
 		float rCourse = restLengthCourse;

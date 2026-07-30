@@ -121,8 +121,15 @@ iteration cap), then writes:
 
 | *File* | Contents |
 | :--- | :--- |
-| [`output/relaxed_stitch.smobj`](output/relaxed_stitch.smobj)<br>![topology](https://img.shields.io/badge/topology-27AE60?style=for-the-badge) | the stitch-mesh topology in the [augmented stitch mesh format](https://github.com/textiles-lab/smobj) (vertices, quad faces, a single generic `knit` face type, and edge-to-edge connectivity derived from the grid's shared vertices). |
+| [`output/relaxed_stitch.smobj`](output/relaxed_stitch.smobj)<br>![topology](https://img.shields.io/badge/topology-27AE60?style=for-the-badge) | the stitch-mesh topology in the [augmented stitch mesh format](https://github.com/textiles-lab/smobj) (vertices, quad faces, a typed face library distinguishing cast-on, bind-off, left/right selvage and per-course knit direction, and edge-to-edge connectivity derived from the grid's shared vertices). |
 | [`output/relaxed_yarn.bcc`](output/relaxed_yarn.bcc)<br>![curves](https://img.shields.io/badge/curves-BE0000?style=for-the-badge) | yarn centerlines in Cem Yuksel's [Binary Curve Collection format](https://www.cemyuksel.com/research/yarnmodels/), sampled per stitch template (knit/purl/cast-on/bind-off/selvage) as open Catmull-Rom curves, up-axis Y. |
+
+> [!NOTE]
+> The two files split the work: the `.smobj` carries **topology** (faces, stitch types,
+> edge connectivity) and the `.bcc` carries **geometry** (yarn centerlines). Because the
+> yarn paths are exported directly, no `.sf` face library is needed to make use of them.
+> Note that knitting runs top-to-bottom in these coordinates — cast-on is the highest
+> row — so loop edges are inverted relative to `faces/knitout.sf`.
 
 ## Project layout
 
