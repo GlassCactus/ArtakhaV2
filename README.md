@@ -105,11 +105,11 @@ swatch can be configured — or exported — without touching the UI.
 | `--rows` `--cols` | ![mesh](https://img.shields.io/badge/mesh-27AE60) | `8` `8` — a 2-stitch border is added, as in the viewer |
 | `--stitch-width` `--stitch-height` | ![mesh](https://img.shields.io/badge/mesh-27AE60) | `1.0` `1.0` |
 | `--rest-course` `--rest-wale` | ![mesh](https://img.shields.io/badge/mesh-27AE60) | `0.75` `0.75` |
-| `--solver` | ![solver](https://img.shields.io/badge/solver-8E44AD) | `original`, or `neighbor` for the neighbor-aware solve |
+| `--solver` | ![solver](https://img.shields.io/badge/solver-8E44AD) | `neighbor`, or `original` for the per-vertex solve |
 | `--k-stretch` `--k-shear` `--k-wale` | ![solver](https://img.shields.io/badge/solver-8E44AD) | `5.0` `0.2` `2.0` — original solver |
 | `--kernel-spring` `--bound-spring` | ![solver](https://img.shields.io/badge/solver-8E44AD) | `2.0` `1.0` — neighbor-aware |
 | `--e-shear` `--e-bend` `--e-slide` | ![solver](https://img.shields.io/badge/solver-8E44AD) | `2.0` `30.0` `5.0` — neighbor-aware |
-| `--time-step` `--iters` `--tol` | ![converge](https://img.shields.io/badge/converge-F39C12) | `0.1` `2000` `1e-5` |
+| `--time-step` `--iters` `--tol` | ![converge](https://img.shields.io/badge/converge-F39C12) | `0.1` `60000` `1e-6` — `--iters` is a ceiling; `--tol` stops it early |
 | `--out-smobj` `--out-bcc` | ![i/o](https://img.shields.io/badge/i%2Fo-546E7A) | `output/relaxed_stitch.smobj` `output/relaxed_yarn.bcc` |
 
 `--export` exits `0` when the relaxation converged and `1` when it hit `--iters` first, so

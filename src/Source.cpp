@@ -2201,10 +2201,16 @@ void ExportBCC(const std::vector<std::vector<glm::vec3>>& yarnCurves, const std:
 // Runs relaxation on a *copy* of sm/dg so it doesn't disturb whatever you're looking at interactively, iterates until the largest per-vertex position
 // change between steps drops below `tol` (or maxIters is hit), then writes.
 
+//Convergence limits, shared by the export button and the --iters/--tol flags so the
+//two cannot drift. maxIters is only a ceiling: the neighbor-aware solver settles in a
+//couple of hundred steps at any size, and the original one needs ~55k at 64x64.
+constexpr int   DEFAULT_MAX_ITERS = 60000;
+constexpr float DEFAULT_TOL = 1e-6f;
+
 //Returns whether the relaxation actually converged, so a scripted export can tell a
 //settled swatch from one that merely ran out of iterations. Both files are written
 //either way; the caller decides whether an unsettled result is acceptable.
-bool ExportFullyRelaxedKnit(StitchMesh sm, DualGraph dg, float timeStep, float kStretch, float kShear, float kWale, float kernelSpring, float boundSpring, float eShear, float eBend, float eSlide, float rCourse, float rWale, bool useNeighborAware, const std::string& smobjPath, const std::string& bccPath, int maxIters = 2000, float tol = 1e-5f)
+bool ExportFullyRelaxedKnit(StitchMesh sm, DualGraph dg, float timeStep, float kStretch, float kShear, float kWale, float kernelSpring, float boundSpring, float eShear, float eBend, float eSlide, float rCourse, float rWale, bool useNeighborAware, const std::string& smobjPath, const std::string& bccPath, int maxIters = DEFAULT_MAX_ITERS, float tol = DEFAULT_TOL)
 {
 	bool converged = false;
 
@@ -2306,7 +2312,16 @@ static bool ExportFromCommandLine(int argc, char* argv[], int& exitCode)
 	//Without --export the overrides still stand, so the viewer opens preconfigured.
 	if (!HasFlag("--export")) return false;
 
-	std::string solver = StrArg("--solver", "original");
+	//Neighbor-aware by default: it settles in a couple of hundred iterations at any
+	//swatch size, where the original solver needs tens of thousands on a large one.
+	std::string solver = StrArg("--solver", "neighbor");
+
+	if (solver != "original" && solver != "neighbor")
+	{
+		std::cout << "Unknown --solver '" << solver << "' (expected 'original' or 'neighbor')" << std::endl;
+		exitCode = 2;
+		return true;
+	}
 
 	StitchMesh sm;
 	DualGraph dg;
@@ -2322,7 +2337,7 @@ static bool ExportFromCommandLine(int argc, char* argv[], int& exitCode)
 		restLengthCourse, restLengthWale, solver != "original",
 		StrArg("--out-smobj", "output/relaxed_stitch.smobj"),
 		StrArg("--out-bcc", "output/relaxed_yarn.bcc"),
-		IntArg("--iters", 2000), FloatArg("--tol", 1e-5f));
+		IntArg("--iters", DEFAULT_MAX_ITERS), FloatArg("--tol", DEFAULT_TOL));
 
 	exitCode = converged ? 0 : 1;
 	return true;
@@ -3226,7 +3241,7 @@ int main(int argc, char* argv[])
 			RegenerateKnit();
 		}
 
-		static int currentMethod = 0;
+		static int currentMethod = 1;   //Neighbor-Aware, matching the --solver default
 
 		if (ImGui::Button("Export Relaxed (smobj + bcc)"))
 		{
