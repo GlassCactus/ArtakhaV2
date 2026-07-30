@@ -130,11 +130,10 @@ endif()
 set_target_properties(ArtakhaV2 PROPERTIES
     VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
 
-# Also copy res\ and imgui.ini next to the exe, so it runs correctly no matter
-# what working directory Visual Studio (or a double-click) launches it from.
+# Also copy res\ next to the exe, so it runs correctly no matter what working
+# directory Visual Studio (or a double-click) launches it from. imgui.ini is not
+# copied: Dear ImGui writes its own layout file next to the exe on first run.
 add_custom_command(TARGET ArtakhaV2 POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory_if_different
             "${CMAKE_CURRENT_SOURCE_DIR}/res" "$<TARGET_FILE_DIR:ArtakhaV2>/res"
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            "${CMAKE_CURRENT_SOURCE_DIR}/imgui.ini" "$<TARGET_FILE_DIR:ArtakhaV2>/imgui.ini"
-    COMMENT "Copying res/ and imgui.ini next to the executable")
+    COMMENT "Copying res/ next to the executable")

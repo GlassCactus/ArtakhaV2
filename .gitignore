@@ -30,6 +30,9 @@ build/
 CMakeFiles/
 CMakeCache.txt
 
+# Dear ImGui window layout, rewritten on every run
+imgui.ini
+
 # OS files
 .DS_Store
 Thumbs.db

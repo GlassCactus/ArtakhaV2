@@ -87,6 +87,22 @@ float stitchWidth = 1.0f;
 float restLengthCourse = 0.75f;
 float restLengthWale = 0.75f;
 
+//Relaxation tuning. File scope so the ImGui sliders and the command-line flags
+//read the same defaults and cannot drift apart.
+float stepSize = 0.1f;
+
+//Original solver
+float kStretch = 5.0f;
+float kShear = 0.2f;
+float kWale = 2.0f;
+
+//Neighbor-Aware solver
+float kernelSpring = 2.0f;
+float boundSpring = 1.0f;
+float eShear = 2.0f;
+float eBend = 30.0f;
+float eSlide = 5.0f;
+
 glm::vec3 quadPos = glm::vec3(0.0f, 0.0f, 0.0f);
 glm::vec3 quadCameraPos = glm::vec3(0.0f, 0.0f, 3.0f);
 glm::vec3 quadCameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
@@ -2185,8 +2201,13 @@ void ExportBCC(const std::vector<std::vector<glm::vec3>>& yarnCurves, const std:
 // Runs relaxation on a *copy* of sm/dg so it doesn't disturb whatever you're looking at interactively, iterates until the largest per-vertex position
 // change between steps drops below `tol` (or maxIters is hit), then writes.
 
-void ExportFullyRelaxedKnit(StitchMesh sm, DualGraph dg, float timeStep, float kStretch, float kShear, float kWale, float kernelSpring, float boundSpring, float eShear, float eBend, float eSlide, float rCourse, float rWale, bool useNeighborAware, const std::string& smobjPath, const std::string& bccPath, int maxIters = 2000, float tol = 1e-5f)
+//Returns whether the relaxation actually converged, so a scripted export can tell a
+//settled swatch from one that merely ran out of iterations. Both files are written
+//either way; the caller decides whether an unsettled result is acceptable.
+bool ExportFullyRelaxedKnit(StitchMesh sm, DualGraph dg, float timeStep, float kStretch, float kShear, float kWale, float kernelSpring, float boundSpring, float eShear, float eBend, float eSlide, float rCourse, float rWale, bool useNeighborAware, const std::string& smobjPath, const std::string& bccPath, int maxIters = 2000, float tol = 1e-5f)
 {
+	bool converged = false;
+
 	for (int iter = 0; iter < maxIters; iter++)
 	{
 		std::vector<glm::vec3> prev = sm.vertices;
@@ -2207,6 +2228,7 @@ void ExportFullyRelaxedKnit(StitchMesh sm, DualGraph dg, float timeStep, float k
 		{
 			std::cout << "ExportFullyRelaxedKnit: converged after " << iter
 				<< " iterations (max vertex delta " << maxDelta << ")" << std::endl;
+			converged = true;
 			break;
 		}
 
@@ -2219,12 +2241,101 @@ void ExportFullyRelaxedKnit(StitchMesh sm, DualGraph dg, float timeStep, float k
 	CollectYarnCurves(sm, yarnCurves);
 	ExportSMOBJ(sm, smobjPath);
 	ExportBCC(yarnCurves, bccPath);
+
+	return converged;
 }
 // ============================================== EXPORT DONE ============================================== //
 
 
+// ============================================== COMMAND LINE ============================================== //
+// Applies any --flag overrides to the tuning parameters above, then, if --export was
+// given, builds the swatch, relaxes it to convergence and writes both files. Returns
+// true once it has handled the run, so main() can exit without opening a window.
+//
+// Nothing below touches OpenGL: the whole build/relax/export chain is pure CPU, so an
+// export needs no window, no GL context, and no files from res/.
+static bool ExportFromCommandLine(int argc, char* argv[], int& exitCode)
+{
+	auto HasFlag = [&](const char* flag)
+	{
+		for (int i = 1; i < argc; i++)
+			if (!std::strcmp(argv[i], flag)) return true;
+
+		return false;
+	};
+
+	auto StrArg = [&](const char* flag, std::string fallback)
+	{
+		for (int i = 1; i + 1 < argc; i++)
+			if (!std::strcmp(argv[i], flag)) return std::string(argv[i + 1]);
+
+		return fallback;
+	};
+
+	auto FloatArg = [&](const char* flag, float fallback)
+	{
+		std::string v = StrArg(flag, "");
+		return v.empty() ? fallback : std::stof(v);
+	};
+
+	auto IntArg = [&](const char* flag, int fallback)
+	{
+		std::string v = StrArg(flag, "");
+		return v.empty() ? fallback : std::stoi(v);
+	};
+
+	//Mesh
+	iRows            = IntArg  ("--rows",          iRows);
+	iCols            = IntArg  ("--cols",          iCols);
+	stitchWidth      = FloatArg("--stitch-width",  stitchWidth);
+	stitchHeight     = FloatArg("--stitch-height", stitchHeight);
+	restLengthCourse = FloatArg("--rest-course",   restLengthCourse);
+	restLengthWale   = FloatArg("--rest-wale",     restLengthWale);
+
+	//Solver
+	stepSize     = FloatArg("--time-step",     stepSize);
+	kStretch     = FloatArg("--k-stretch",     kStretch);
+	kShear       = FloatArg("--k-shear",       kShear);
+	kWale        = FloatArg("--k-wale",        kWale);
+	kernelSpring = FloatArg("--kernel-spring", kernelSpring);
+	boundSpring  = FloatArg("--bound-spring",  boundSpring);
+	eShear       = FloatArg("--e-shear",       eShear);
+	eBend        = FloatArg("--e-bend",        eBend);
+	eSlide       = FloatArg("--e-slide",       eSlide);
+
+	//Without --export the overrides still stand, so the viewer opens preconfigured.
+	if (!HasFlag("--export")) return false;
+
+	std::string solver = StrArg("--solver", "original");
+
+	StitchMesh sm;
+	DualGraph dg;
+
+	//The +2 border matches what RegenerateKnit builds for the viewer.
+	BuildStitchMesh(sm, iRows + 2, iCols + 2, stitchWidth, stitchHeight);
+	BuildDualGraph(sm, dg);
+
+	std::cout << "Exporting " << iRows << "x" << iCols << " swatch (+2 border), solver=" << solver << std::endl;
+
+	bool converged = ExportFullyRelaxedKnit(sm, dg, stepSize, kStretch, kShear, kWale,
+		kernelSpring, boundSpring, eShear, eBend, eSlide,
+		restLengthCourse, restLengthWale, solver != "original",
+		StrArg("--out-smobj", "output/relaxed_stitch.smobj"),
+		StrArg("--out-bcc", "output/relaxed_yarn.bcc"),
+		IntArg("--iters", 2000), FloatArg("--tol", 1e-5f));
+
+	exitCode = converged ? 0 : 1;
+	return true;
+}
+
+
 int main(int argc, char* argv[])
 {
+	//--export handles the whole run without a window; otherwise this only applies
+	//any --flag overrides and falls through to the viewer.
+	int exitCode = 0;
+	if (ExportFromCommandLine(argc, argv, exitCode)) return exitCode;
+
 	glfwInit();
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1); //4.1 is the ceiling on macOS, and we use nothing newer.
@@ -2318,7 +2429,8 @@ int main(int argc, char* argv[])
 	cyTriMesh mesh;
 	const char* objFilePath;
 	
-	if (argc > 1)
+	//skip --flags so they aren't mistaken for a mesh path
+	if (argc > 1 && argv[1][0] != '-')
 	{
 		objFilePath = argv[1];
 	}
@@ -2361,20 +2473,9 @@ int main(int argc, char* argv[])
 	std::vector<unsigned int> yarnIndices;
 	glm::vec3 yarnColor = glm::vec3(0.0f, 0.545f, 0.255f);
 
-	//The Stitch Mesh initialization
-	float stepSize = 0.1f;
-	float kStretch = 5.0f;
-	float kShear = 0.2f;
-	float kWale = 2.0f;
+	//The Stitch Mesh initialization (tuning params are at file scope)
 	StitchMesh sm;
 	DualGraph dg;
-
-	//Neighbor-Aware parameters initialization
-	float kernelSpring = 2.0f;
-	float boundSpring = 1.0f;
-	float eShear = 2.0f;
-	float eBend = 30.0f;
-	float eSlide = 5.0f;
 
 	VertexArray yarnVAO;
 	VertexBuffer yarnVBO(yarnVertices.data(), yarnVertices.size() * sizeof(float));

@@ -21,7 +21,7 @@ yarn-level cloth tools.**
 
 </div>
 
-**Contents** — [Features](#features) · [Gallery](#gallery) · [Dependencies](#dependencies) · [Building](#building) · [Controls](#controls) · [Relaxation Solvers](#the-relaxation-solvers) · [Export](#export-smobj--bcc) · [Project layout](#project-layout) · [Acknowledgments](#acknowledgments) · [References](#references)
+**Contents** — [Features](#features) · [Gallery](#gallery) · [Dependencies](#dependencies) · [Building](#building) · [Command line](#command-line) · [Controls](#controls) · [Relaxation Solvers](#the-relaxation-solvers) · [Export](#export-smobj--bcc) · [Project layout](#project-layout) · [Acknowledgments](#acknowledgments) · [References](#references)
 
 ---
 
@@ -86,10 +86,44 @@ The build copies `res/` and `imgui.ini` next to the executable, so it runs
 correctly regardless of the working directory it is launched from.
 
 > [!NOTE]
-> **OpenGL version.** Both platforms target **OpenGL 4.1 core / GLSL 410**. macOS
-> caps out at 4.1, and nothing here needs anything newer — so there is one shader
-> set and one GLAD loader rather than a per-platform split. Note that Apple has
-> deprecated OpenGL; it still works, but will not advance past 4.1.
+> Targets **OpenGL 4.1 core / GLSL 410** on both platforms — macOS caps out there, so
+> it's one shader set and one GLAD loader rather than a per-platform split.
+
+## Command line
+
+Every tuning parameter in the ImGui panel can also be set from the command line, so a
+swatch can be configured — or exported — without touching the UI.
+
+```sh
+./build/ArtakhaV2 --rows 16 --cols 16 --rest-course 0.6    # viewer, preconfigured
+./build/ArtakhaV2 --rows 16 --cols 16 --export             # relax, write both files, quit
+```
+
+| *Flag* | | Default |
+| :--- | :---: | :--- |
+| `--export` | ![action](https://img.shields.io/badge/action-BE0000) | relax to convergence, write both files, exit |
+| `--rows` `--cols` | ![mesh](https://img.shields.io/badge/mesh-27AE60) | `8` `8` — a 2-stitch border is added, as in the viewer |
+| `--stitch-width` `--stitch-height` | ![mesh](https://img.shields.io/badge/mesh-27AE60) | `1.0` `1.0` |
+| `--rest-course` `--rest-wale` | ![mesh](https://img.shields.io/badge/mesh-27AE60) | `0.75` `0.75` |
+| `--solver` | ![solver](https://img.shields.io/badge/solver-8E44AD) | `original`, or `neighbor` for the neighbor-aware solve |
+| `--k-stretch` `--k-shear` `--k-wale` | ![solver](https://img.shields.io/badge/solver-8E44AD) | `5.0` `0.2` `2.0` — original solver |
+| `--kernel-spring` `--bound-spring` | ![solver](https://img.shields.io/badge/solver-8E44AD) | `2.0` `1.0` — neighbor-aware |
+| `--e-shear` `--e-bend` `--e-slide` | ![solver](https://img.shields.io/badge/solver-8E44AD) | `2.0` `30.0` `5.0` — neighbor-aware |
+| `--time-step` `--iters` `--tol` | ![converge](https://img.shields.io/badge/converge-F39C12) | `0.1` `2000` `1e-5` |
+| `--out-smobj` `--out-bcc` | ![i/o](https://img.shields.io/badge/i%2Fo-546E7A) | `output/relaxed_stitch.smobj` `output/relaxed_yarn.bcc` |
+
+`--export` exits `0` when the relaxation converged and `1` when it hit `--iters` first, so
+sweeps are just shell loops:
+
+```sh
+printf '%s\n' 0.6 0.7 0.8 | xargs -P 8 -I{} \
+  ./build/ArtakhaV2 --export --rows 32 --cols 32 --rest-course {} \
+    --out-smobj output/rc{}.smobj --out-bcc output/rc{}.bcc
+```
+
+> [!NOTE]
+> `--export` opens no window and reads nothing from `res/` — the whole relax-and-export
+> path is CPU only, so it runs over SSH and parallelises freely.
 
 ## Controls
 
@@ -125,11 +159,9 @@ iteration cap), then writes:
 | [`output/relaxed_yarn.bcc`](output/relaxed_yarn.bcc)<br>![curves](https://img.shields.io/badge/curves-BE0000?style=for-the-badge) | yarn centerlines in Cem Yuksel's [Binary Curve Collection format](https://www.cemyuksel.com/research/yarnmodels/), sampled per stitch template (knit/purl/cast-on/bind-off/selvage) as open Catmull-Rom curves, up-axis Y. |
 
 > [!NOTE]
-> The two files split the work: the `.smobj` carries **topology** (faces, stitch types,
-> edge connectivity) and the `.bcc` carries **geometry** (yarn centerlines). Because the
-> yarn paths are exported directly, no `.sf` face library is needed to make use of them.
-> Note that knitting runs top-to-bottom in these coordinates — cast-on is the highest
-> row — so loop edges are inverted relative to `faces/knitout.sf`.
+> `.smobj` is topology, `.bcc` is geometry — so no `.sf` library is needed to use them.
+> Knitting runs top-to-bottom here (cast-on is the highest row), which inverts loop
+> edges relative to `faces/knitout.sf`.
 
 ## Project layout
 
