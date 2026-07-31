@@ -1,15 +1,20 @@
 <div align="center">
 
 # 🧶 ArtakhaV2 🧶
-
+<sub><i>/arr-TOCK-ah/</i></sub>
 ### Real-Time Yarn-Level Knit Simulation
+<img width="1292" height="827" alt="Denoised" src="https://github.com/user-attachments/assets/2adca42b-b22b-4ff5-9963-50608883127b" />
 
-**A real-time OpenGL renderer that builds a stitch mesh, relaxes it under a
-knit-mechanics energy model, and generates procedural yarn geometry
-(cast-on, knit, purl, selvage, bind-off) using Catmull-Rom splines swept
-into tubes. Relaxed swatches can be exported as `.smobj` (augmented
-stitch mesh) and `.bcc` (binary curve collection) for use in other
-yarn-level cloth tools.**
+</div>
+
+<div align="left">
+
+**ArtakhaV2** is a real-time yarn-level knit simulation and rendering system. It constructs stitch meshes, relaxes them under knit-mechanics energy models,
+and generates procedural yarn geometry by sweeping Catmull-Rom splines into
+tubular strands using parallel-transport frames.
+
+Relaxed swatches can be exported as `.smobj` and `.bcc` files for use in
+other yarn-level cloth tools.
 
 ![C++](https://img.shields.io/badge/C%2B%2B-17-00599C?logo=cplusplus&logoColor=white)
 ![OpenGL](https://img.shields.io/badge/OpenGL-4.1%20core-5586A4?logo=opengl&logoColor=white)
@@ -27,13 +32,12 @@ yarn-level cloth tools.**
 
 ## Features
 
-| *Feature* | Description |
+| Feature | Description |
 | :--- | :--- |
-| **Procedural stitch mesh**<br>![mesh](https://img.shields.io/badge/mesh-27AE60?style=for-the-badge) | configurable rows/columns, course/wale rest lengths, built on a quad grid with a dual graph for neighbor-aware forces. |
-| **Two relaxation solvers**<br>![solver](https://img.shields.io/badge/solver-8E44AD?style=for-the-badge) | swappable at runtime:<br>• *Original* — per-vertex Newton step (stretch, shear, wale-bend springs).<br>• *Neighbor-Aware* — global sparse Newton solve over the dual graph (kernel/boundary springs, shear, bend, slide energies) via `Eigen::ConjugateGradient`. |
-| **Procedural yarn geometry**<br>![yarn](https://img.shields.io/badge/yarn-BE0000?style=for-the-badge) | per-stitch template curves (knit, purl, cast-on, bind-off, left/right selvage) sampled with Catmull-Rom splines and swept into tubes with parallel-transport frames. |
-| **Mesh morphing**<br>![morph](https://img.shields.io/badge/morph-F39C12?style=for-the-badge) | bend, twist, stretch, shear, or wrap the relaxed swatch onto a sphere for garment-shaping previews. |
-| **Full render pipeline**<br>![render](https://img.shields.io/badge/render-F26430?style=for-the-badge) | shadow-mapped directional light, 5 selectable skyboxes, gamma correction, live ImGui control panel. |
+| **Procedural stitch mesh**<br>![mesh](https://img.shields.io/badge/mesh-27AE60?style=for-the-badge) | Configurable rows/columns, course/wale rest lengths, built on a quad grid with a dual graph for neighbor-aware forces. |
+| **Two relaxation solvers**<br>![solver](https://img.shields.io/badge/solver-8E44AD?style=for-the-badge) | Swappable at runtime:<br>• *Original* — Per-vertex Newton step (stretch, shear, wale-bend springs).<br>• *Neighbor-Aware* — Global sparse Newton solve over the dual graph (kernel/boundary springs, shear, bend, slide energies) via `Eigen::ConjugateGradient`. |
+| **Procedural yarn geometry**<br>![yarn](https://img.shields.io/badge/yarn-BE0000?style=for-the-badge) | Per-stitch template curves (knit, purl, cast-on, bind-off, left/right selvage) sampled with Catmull-Rom splines and swept into tubes with parallel-transport frames. |
+| **Mesh morphing**<br>![morph](https://img.shields.io/badge/morph-F39C12?style=for-the-badge) | Bends, twists, stretches, shears, or wraps the swatch onto a sphere for garment-shaping previews before relaxation. |
 | **One-click export**<br>![i/o](https://img.shields.io/badge/i%2Fo-546E7A?style=for-the-badge) | relax to convergence and write out `.smobj` + `.bcc` for the current swatch. |
 
 ## Gallery
@@ -48,7 +52,7 @@ yarn-level cloth tools.**
 
 ## Dependencies
 
-| *Library* | | Purpose |
+| Library | | Purpose |
 | :--- | :---: | :--- |
 | [GLFW](https://www.glfw.org/) | ![window](https://img.shields.io/badge/window-1E88E5) | Windowing, input |
 | [GLAD](https://glad.dav1d.de/) | ![loader](https://img.shields.io/badge/loader-5586A4) | OpenGL core loader (generated for 3.3, vendored in `external/`) |
@@ -89,7 +93,13 @@ correctly regardless of the working directory it is launched from.
 > Targets **OpenGL 4.1 core / GLSL 410** on both platforms — macOS caps out there, so
 > it's one shader set and one GLAD loader rather than a per-platform split.
 
-## Command line
+## Headless Export & Command Line
+
+For Windows users, `buildRun.bat` can also be used to configure, build, and launch the Release executable automatically.
+
+```sh
+./buildRun.bat
+```
 
 Every tuning parameter in the ImGui panel can also be set from the command line, so a
 swatch can be configured — or exported — without touching the UI.
@@ -99,7 +109,7 @@ swatch can be configured — or exported — without touching the UI.
 ./build/ArtakhaV2 --rows 16 --cols 16 --export             # relax, write both files, quit
 ```
 
-| *Flag* | | Default |
+| Flag | | Default |
 | :--- | :---: | :--- |
 | `--export` | ![action](https://img.shields.io/badge/action-BE0000) | relax to convergence, write both files, exit |
 | `--rows` `--cols` | ![mesh](https://img.shields.io/badge/mesh-27AE60) | `8` `8` — a 2-stitch border is added, as in the viewer |
@@ -127,22 +137,25 @@ printf '%s\n' 0.6 0.7 0.8 | xargs -P 8 -I{} \
 
 ## Controls
 
-| *Input* | Action | *Input* | Action |
-| :---: | :--- | :---: | :--- |
-| ![WASD](https://img.shields.io/badge/W%20A%20S%20D-30363D) ![QE](https://img.shields.io/badge/Q%20E-30363D) | Fly camera (move / up / down) | ![Alt](https://img.shields.io/badge/Alt-30363D) | Toggle quad-preview mode + UI cursor mode |
-| ![Mouse](https://img.shields.io/badge/Mouse-1E88E5) | Look around | ![Ctrl + mouse drag](https://img.shields.io/badge/Ctrl%20%2B%20mouse%20drag-1E88E5) | Orbit the light around the mesh |
-| ![Scroll](https://img.shields.io/badge/Scroll-1E88E5) | Move forward/back along view direction | ![F5](https://img.shields.io/badge/F5-30363D) | Save a screenshot to `screenshots/` |
+| Input | Action |
+| :---: | :--- |
+| ![WASD](https://img.shields.io/badge/W%20A%20S%20D-30363D) | Fly camera (move / up / down) |
+| ![Scroll](https://img.shields.io/badge/Scroll-1E88E5) ![QE](https://img.shields.io/badge/Q%20E-30363D)| Move forward/back along view direction |
+| ![Mouse](https://img.shields.io/badge/Mouse-1E88E5) | Look around | 
+| ![Alt](https://img.shields.io/badge/Alt-30363D) | Toggle quad-preview mode + UI cursor mode |
+| ![Ctrl + mouse drag](https://img.shields.io/badge/Ctrl%20%2B%20mouse%20drag-1E88E5) | Orbit the light around the mesh |
+| ![F5](https://img.shields.io/badge/F5-30363D) | Save a screenshot to `screenshots/` |
 | ![Esc](https://img.shields.io/badge/Esc-BE0000) | Quit | | |
 
 ## The Relaxation Solvers
 
-The stitch mesh starts as a flat grid and is relaxed toward a physically
+The stitch mesh starts as a flat grid and is relaxed towards a physically
 plausible knit shape:
 
-| *Solver* | Method |
+| Solver | Method |
 | :--- | :--- |
-| **Original** (`Relax`)<br>![local](https://img.shields.io/badge/local-1E88E5?style=for-the-badge) | solves a local per-vertex Newton step using stretch springs (course, wale, and both diagonals) and shear terms across each quad face, plus a wale-bending term across three vertically-stacked rows. |
-| **Neighbor-Aware** (`RelaxNeighbor`)<br>![global](https://img.shields.io/badge/global-8E44AD?style=for-the-badge) | builds a full sparse Hessian over the *dual graph* (one node per stitch) with kernel/boundary springs, bilinear shear, a cosine bending energy, and a slide energy, then solves the whole system at once with a conjugate-gradient solver. Vertex positions are recovered from the relaxed dual nodes via a weighted average of the four (or fewer, at boundaries) surrounding stitch centers. |
+| **Original** (`Relax`)<br>![local](https://img.shields.io/badge/local-1E88E5?style=for-the-badge) | Solves a local per-vertex Newton step using stretch springs (course, wale, and both diagonals) and shear terms across each quad face, plus a wale-bending term across three vertically-stacked rows. |
+| **Neighbor-Aware** (`RelaxNeighbor`)<br>![global](https://img.shields.io/badge/global-8E44AD?style=for-the-badge) | Builds a full sparse Hessian over the *dual graph* (one node per stitch face) with kernel/boundary springs, bilinear shear, a cosine bending energy, and a slide energy. The sparse system is solved at once with a conjugate-gradient solver. Vertex positions are recovered from the relaxed dual nodes via a weighted average of the four (or fewer, at boundaries) surrounding stitch centers and phantom nodes. |
 
 Both are exposed live in the ImGui panel so you can compare convergence
 behavior and tune spring/energy constants per run.
@@ -151,12 +164,12 @@ behavior and tune spring/energy constants per run.
 
 Clicking **Export Relaxed (smobj + bcc)** relaxes a *copy* of the current
 mesh to convergence (max per-vertex delta below tolerance, or a max
-iteration cap), then writes:
+iteration cap), then writes the following into the output folder:
 
 | *File* | Contents |
 | :--- | :--- |
-| [`output/relaxed_stitch.smobj`](output/relaxed_stitch.smobj)<br>![topology](https://img.shields.io/badge/topology-27AE60?style=for-the-badge) | the stitch-mesh topology in the [augmented stitch mesh format](https://github.com/textiles-lab/smobj) (vertices, quad faces, a typed face library distinguishing cast-on, bind-off, left/right selvage and per-course knit direction, and edge-to-edge connectivity derived from the grid's shared vertices). |
-| [`output/relaxed_yarn.bcc`](output/relaxed_yarn.bcc)<br>![curves](https://img.shields.io/badge/curves-BE0000?style=for-the-badge) | yarn centerlines in Cem Yuksel's [Binary Curve Collection format](https://www.cemyuksel.com/research/yarnmodels/), sampled per stitch template (knit/purl/cast-on/bind-off/selvage) as open Catmull-Rom curves, up-axis Y. |
+| [`relaxed_stitch.smobj`](output/relaxed_stitch.smobj)<br>![topology](https://img.shields.io/badge/topology-27AE60?style=for-the-badge) | The stitch-mesh topology in the [augmented stitch mesh format](https://github.com/textiles-lab/smobj) (vertices, quad faces, a typed face library distinguishing cast-on, bind-off, left/right selvage and per-course knit direction, and edge-to-edge connectivity derived from the grid's shared vertices). |
+| [`relaxed_yarn.bcc`](output/relaxed_yarn.bcc)<br>![curves](https://img.shields.io/badge/curves-BE0000?style=for-the-badge) | Yarn centerlines in Cem Yuksel's [Binary Curve Collection format](https://www.cemyuksel.com/research/yarnmodels/), sampled per stitch template (knit/purl/cast-on/bind-off/selvage) as open Catmull-Rom curves, up-axis Y. |
 
 > [!NOTE]
 > `.smobj` is topology, `.bcc` is geometry — so no `.sf` library is needed to use them.
@@ -165,12 +178,13 @@ iteration cap), then writes:
 
 ## Project layout
 
-<details open>
+<details>
 <summary><b>📂 Project structure</b> — click to collapse</summary>
 
 <pre>
 ArtakhaV2/
 ├── <a href="README.md">README.md</a>
+├── <a href="buildRun.bat">buildRun.bat</a>
 ├── <a href="CMakeLists.txt">CMakeLists.txt</a>          # macOS + Windows build, fetches GLFW + Eigen
 ├── <a href=".gitignore">.gitignore</a>
 ├── <a href="imgui.ini">imgui.ini</a>               # ImGui panel layout
