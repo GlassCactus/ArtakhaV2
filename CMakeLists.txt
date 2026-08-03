@@ -126,7 +126,7 @@ if(NOT CMAKE_SYSTEM_PROCESSOR MATCHES "^(x86_64|AMD64|i[3-6]86)$")
     target_compile_definitions(ArtakhaV2 PRIVATE CY_NO_INTRIN_H)
 endif()
 
-# Run from the project root so it finds res\shaders, res\textures and imgui.ini
+# Run from the project root so it finds res\shaders and res\textures
 set_target_properties(ArtakhaV2 PROPERTIES
     VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
 

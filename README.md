@@ -86,8 +86,8 @@ cmake -S . -B build
 cmake --build build --config Release
 ```
 
-The build copies `res/` and `imgui.ini` next to the executable, so it runs
-correctly regardless of the working directory it is launched from.
+The build copies `res/` next to the executable, so it runs correctly regardless of
+the working directory it is launched from.
 
 > [!NOTE]
 > Targets **OpenGL 4.1 core / GLSL 410** on both platforms — macOS caps out there, so
@@ -187,7 +187,6 @@ ArtakhaV2/
 ├── <a href="buildRun.bat">buildRun.bat</a>
 ├── <a href="CMakeLists.txt">CMakeLists.txt</a>          # macOS + Windows build, fetches GLFW + Eigen
 ├── <a href=".gitignore">.gitignore</a>
-├── <a href="imgui.ini">imgui.ini</a>               # ImGui panel layout
 ├── <a href="external">external/</a>               # vendored GLAD
 │   ├── <a href="external/include/glad/glad.h">include/glad/glad.h</a>
 │   ├── <a href="external/include/KHR/khrplatform.h">include/KHR/khrplatform.h</a>
