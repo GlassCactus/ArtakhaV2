@@ -1,9 +1,10 @@
 <div align="center">
 
 # 🧶 ArtakhaV2 🧶
-<sub><i>/arr-TOCK-ah/</i></sub>
+<sup><i>/arr-TOCK-ah/</i></sup>
 ### Real-Time Yarn-Level Knit Simulation
-<img width="1292" height="827" alt="Denoised" src="https://github.com/user-attachments/assets/2adca42b-b22b-4ff5-9963-50608883127b" />
+
+<img width="1920" height="1080" alt="Neighbor_Aware_Relaxation" src="https://github.com/user-attachments/assets/1d596fc4-3008-486a-af47-2e1f43b66af5" />
 
 </div>
 
@@ -44,9 +45,12 @@ other yarn-level cloth tools.
 
 <div align="center">
 
+
 | Sheared | Solved |
 |:---:|:---:|
 | <img src="https://github.com/user-attachments/assets/c9c0eebe-151c-4b52-8408-e0debe7028a2" width="480" alt="App screenshot"> | <img src="https://github.com/user-attachments/assets/6988093c-62b1-4767-ad84-9d1658cad503" width="480" alt="App screenshot"> |
+
+<img width="1292" height="827" alt="Denoised" src="https://github.com/user-attachments/assets/2adca42b-b22b-4ff5-9963-50608883127b" />
 
 </div>
 
@@ -95,10 +99,10 @@ the working directory it is launched from.
 
 ## Headless Export & Command Line
 
-For Windows users, `buildRun.bat` can also be used to configure, build, and launch the Release executable automatically.
+For Windows users, `build.bat` can also be used to configure, build, and launch the Release executable automatically.
 
 ```sh
-./buildRun.bat
+./build.bat
 ```
 
 Every tuning parameter in the ImGui panel can also be set from the command line, so a
@@ -184,7 +188,7 @@ iteration cap), then writes the following into the output folder:
 <pre>
 ArtakhaV2/
 ├── <a href="README.md">README.md</a>
-├── <a href="buildRun.bat">buildRun.bat</a>
+├── <a href="build.bat">build.bat</a>
 ├── <a href="CMakeLists.txt">CMakeLists.txt</a>          # macOS + Windows build, fetches GLFW + Eigen
 ├── <a href=".gitignore">.gitignore</a>
 ├── <a href="external">external/</a>               # vendored GLAD
