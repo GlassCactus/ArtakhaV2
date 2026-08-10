@@ -157,7 +157,7 @@ vec3 BlinnPhong(vec3 color)
 	//float attenuation = 1.0f / (attConst + (attLinear * distance) + (attQuad * (distance * distance)));
 
 	//ambient i guess
-	vec3 ambient = color * 0.01f;
+	vec3 ambient = color * 0.1;
 	float gloss = 4.0f;
 
 	//diff
