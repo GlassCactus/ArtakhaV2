@@ -13,6 +13,7 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
+#include <glm/gtx/norm.hpp>
 
 #include <filesystem>
 #include <iostream>
@@ -2127,7 +2128,165 @@ void ExportSMOBJ(const StitchMesh& sm, const std::string& path)
 		<< " faces, " << library.size() << " face types)" << std::endl;
 }
 
+// ============================================== Connect Yarn Curves  ============================================== //
+//Merges the per-template call section "CollectYarnCurves" produces into one continuous strand for the BCC	with a nearest neighbor since the distance should be at or near 0.
+//OH AND BY SECTION I MEAN THE THREE TEMPLATES EACH MESH SQUAR EHOLDS.
 
+//Just a collection of points with a bool value if it's a clsoed or an open strand
+struct JoinedCurve
+{
+	std::vector<glm::vec3> pts;
+	bool closed;
+};
+
+std::vector<JoinedCurve> JoinYarnCurves(const std::vector<std::vector<glm::vec3>>& yarnCurves, float epsilon = 1e-2f) 
+{
+	//ENDPOINT STUFF
+	//There are always two endpoints. endpointPos holds the position in 3D space and endpointRef holds which section it belongs to and which end it is. (loop, purl ends, front, back, etc.)
+	//endpointOfStart and endpointOfEnd are reverse lookups. As long as we have the section index we can jump to its starting or ending position rather than algorithmically scanning everything again.
+	struct Endpoint
+	{
+		int curveIdx;
+		bool isStart;
+	};
+	std::vector<glm::vec3> endpointPos;
+	std::vector<Endpoint> endpointRef; 
+	std::vector<int> endpointOfStart(yarnCurves.size(), -1), endpointOfEnd(yarnCurves.size(), -1);
+
+	for (int i = 0; i < (int)yarnCurves.size(); i++)
+	{
+		if (yarnCurves[i].size() < 2)
+			continue;
+
+		endpointOfStart[i] = (int)endpointPos.size();
+		endpointPos.push_back(yarnCurves[i].front());
+		endpointRef.push_back({ i, true });
+		endpointOfEnd[i] = (int)endpointPos.size();
+		endpointPos.push_back(yarnCurves[i].back());
+		endpointRef.push_back({ i, false });
+	}
+
+	const float epsilonSq = epsilon * epsilon; //eh figured I go closer
+	int M = (int)endpointPos.size();
+	
+	//The nearest neighbor stuff. Basically for every endpoint "i" this will loop up every OTHER endpoint "j" (excluding the "j"s that belong to the same section as "i" since a section's own start and end shouldn't be the same)
+	//and remembers whichever point is the closest as long as it is within "epsilon". 
+	std::vector<int> nearest(M, -1);
+	for (int i = 0; i < M; i++)
+	{
+		float best = epsilonSq;
+		for (int j = 0; j < M; j++)
+		{
+			if (endpointRef[i].curveIdx == endpointRef[j].curveIdx)
+				continue;
+
+			float d2 = glm::length2(endpointPos[i] - endpointPos[j]); //lol squared length was in  <glm/gtx/norm.hpp>
+
+			if (d2 < best)
+			{
+				best = d2;
+				nearest[i] = j;
+			}
+		}
+	}
+
+	//Checks that the nearest points selected is mutual from two section as a safety net for whatever reason it's closes for one but not the other.
+	std::vector<int> matchOf(M, -1);
+	for (int i = 0; i < M; i++)
+	{
+		if (nearest[i] != -1 && nearest[nearest[i]] == i)
+			matchOf[i] = nearest[i];
+	}
+
+	std::vector<JoinedCurve> chains;
+	std::vector<bool> visited(yarnCurves.size(), false);
+
+// skipFirst drops the entry point of every section after the first one in a chain that point is (within epsilon) the exact same location as the previous
+// section's exit point. Originally it made the fiber render "crunchy" since it was trying to render in between two points on top of eachother. 
+
+	auto appendPts = [&](int c, bool enterAtStart, std::vector<glm::vec3>& out, bool skipFirst)
+		{
+			auto& pts = yarnCurves[c];
+			if (enterAtStart)
+			{
+				auto begin = skipFirst ? (pts.begin() + 1) : pts.begin();
+				out.insert(out.end(), begin, pts.end());
+			}
+			else
+			{
+				auto begin = skipFirst ? (pts.rbegin() + 1) : pts.rbegin();
+				out.insert(out.end(), begin, pts.rend());
+			}
+		};
+
+	//Sets up the walk and tracks the first curve. This is how it knows when it's made a full loop. Also made a cout comment so if everything's connected, it should only output "1 loop".
+	auto walkFrom = [&](int startCurve, bool enterAtStart) -> JoinedCurve
+		{
+			JoinedCurve chain;
+			chain.closed = false;
+			int firstCurve = startCurve;
+			int c = startCurve;
+			bool enterStart = enterAtStart;
+			bool first = true;
+
+
+			//Each iteration goes through one section and marks it visited so we don't jut loop have to it after, appends the points, and skips duplicates
+			while (!visited[c])
+			{
+				visited[c] = true;
+				appendPts(c, enterStart, chain.pts, !first);
+				first = false;
+
+				int exitEpIdx = enterStart ? endpointOfEnd[c] : endpointOfStart[c];
+				if (exitEpIdx < 0)
+					break;
+
+				int m = matchOf[exitEpIdx];
+				if (m < 0)
+					break; //cast-on and bind-off tial should be the "final"
+
+				int nextCurve = endpointRef[m].curveIdx;
+				bool nextEnterStart = endpointRef[m].isStart;
+
+				if (nextCurve == firstCurve)
+				{
+					chain.closed = true;
+					break;
+				}
+
+				c = nextCurve;
+				enterStart = nextEnterStart;
+			}
+
+			return chain;
+		};
+	
+
+
+	for (int i = 0; i < M; i++)
+	{
+		if (matchOf[i] != -1)
+			continue;
+
+		int c = endpointRef[i].curveIdx;
+
+		if (visited[c])
+			continue;
+
+		chains.push_back(walkFrom(c, endpointRef[i].isStart));
+	}
+
+	for (int c = 0; c < (int)yarnCurves.size(); c++)
+	{
+		if (!visited[c] && yarnCurves[c].size() >= 2)
+			chains.push_back(walkFrom(c, true));
+	}
+
+	std::cout << "JoinedYarnCurves: " << yarnCurves.size() << " section joined into " << chains.size() << " strands" << std::endl;
+
+	return chains;
+
+}
 // ============================================== EXPORT: BCC (yarn curves) ============================================== //
 //   bytes 0-2   "BCC"
 //   byte  3     0x44  (4-byte int, 4-byte float)
@@ -2140,7 +2299,7 @@ void ExportSMOBJ(const StitchMesh& sm, const std::string& path)
 //
 // then per curve: int32 pointCount (positive = open), followed by that many (x,y,z) float32 triples.
 
-void ExportBCC(const std::vector<std::vector<glm::vec3>>& yarnCurves, const std::string& path)
+void ExportBCC(const std::vector<JoinedCurve>& yarnCurves, const std::string& path)
 {
 	std::ofstream out(path, std::ios::binary);
 	if (!out)
@@ -2154,9 +2313,11 @@ void ExportBCC(const std::vector<std::vector<glm::vec3>>& yarnCurves, const std:
 
 	for (auto& c : yarnCurves)
 	{
-		if (c.size() < 2) continue; // skip degenerate curves
+		if (c.pts.size() < 2) 
+			continue; // skip degenerate curves
+
 		curveCount++;
-		pointCount += c.size();
+		pointCount += c.pts.size();
 	}
 
 	char header[64];
@@ -2180,12 +2341,16 @@ void ExportBCC(const std::vector<std::vector<glm::vec3>>& yarnCurves, const std:
 
 	for (auto& c : yarnCurves)
 	{
-		if (c.size() < 2) continue;
+		if (c.pts.size() < 2) continue;
 
-		int32_t n = (int32_t)c.size(); // positive => open curve (not a closed loop)
+		int32_t n = (int32_t)c.pts.size(); // positive => open curve (not a closed loop)
+		
+		if (c.closed) 
+			n = -n; //negative = closed loop
+
 		out.write(reinterpret_cast<const char*>(&n), sizeof(int32_t));
 
-		for (auto& p : c)
+		for (auto& p : c.pts)
 		{
 			float xyz[3] = { p.x, p.y, p.z };
 			out.write(reinterpret_cast<const char*>(xyz), sizeof(xyz));
@@ -2246,7 +2411,7 @@ bool ExportFullyRelaxedKnit(StitchMesh sm, DualGraph dg, float timeStep, float k
 	std::vector<std::vector<glm::vec3>> yarnCurves;
 	CollectYarnCurves(sm, yarnCurves);
 	ExportSMOBJ(sm, smobjPath);
-	ExportBCC(yarnCurves, bccPath);
+	ExportBCC(JoinYarnCurves(yarnCurves), bccPath);
 
 	return converged;
 }
