@@ -15,6 +15,8 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtx/norm.hpp>
 
+#include <algorithm>
+#include <cmath>
 #include <filesystem>
 #include <iostream>
 #include <string>
@@ -472,7 +474,8 @@ void RelaxNeighbor(StitchMesh& sm, DualGraph& dg, float timeStep, float kernelSp
 			gradient[j] -= g;
 
 			glm::mat3 nnT = glm::outerProduct(n, n);
-			glm::mat3 H = eSpring * ((1.0f - (L / len)) * glm::mat3(1.0f) + (L / len) * nnT);
+			float kIso = glm::max(0.0f, 1.0f - (L / len)); //transverse eigenvalue; goes negative on a compressed spring and CG can't solve an indefinite matrix
+			glm::mat3 H = eSpring * (kIso * glm::mat3(1.0f) + (L / len) * nnT);
 
 			hessian[i] += H;
 			hessian[j] += H;
@@ -2139,7 +2142,7 @@ struct JoinedCurve
 	bool closed;
 };
 
-std::vector<JoinedCurve> JoinYarnCurves(const std::vector<std::vector<glm::vec3>>& yarnCurves, float epsilon = 1e-2f) 
+std::vector<JoinedCurve> JoinYarnCurves(const std::vector<std::vector<glm::vec3>>& yarnCurves, float joinFactor = 2.0f)
 {
 	//ENDPOINT STUFF
 	//There are always two endpoints. endpointPos holds the position in 3D space and endpointRef holds which section it belongs to and which end it is. (loop, purl ends, front, back, etc.)
@@ -2166,7 +2169,24 @@ std::vector<JoinedCurve> JoinYarnCurves(const std::vector<std::vector<glm::vec3>
 		endpointRef.push_back({ i, false });
 	}
 
-	const float epsilonSq = epsilon * epsilon; //eh figured I go closer
+	//Measure the sampling spacing and weld relative to that. 
+	std::vector<float> segmentLengths;
+	for (const auto& curve : yarnCurves)
+	{
+		for (size_t i = 1; i < curve.size(); i++)
+			segmentLengths.push_back(glm::length(curve[i] - curve[i - 1]));
+	}
+
+	float medianSegment = 1.0f;
+	if (!segmentLengths.empty())
+	{
+		size_t mid = segmentLengths.size() / 2;
+		std::nth_element(segmentLengths.begin(), segmentLengths.begin() + mid, segmentLengths.end());
+		medianSegment = segmentLengths[mid];
+	}
+
+	const float epsilon = joinFactor * medianSegment;
+	const float epsilonSq = epsilon * epsilon;
 	int M = (int)endpointPos.size();
 	
 	//The nearest neighbor stuff. Basically for every endpoint "i" this will loop up every OTHER endpoint "j" (excluding the "j"s that belong to the same section as "i" since a section's own start and end shouldn't be the same)
@@ -2390,9 +2410,27 @@ bool ExportFullyRelaxedKnit(StitchMesh sm, DualGraph dg, float timeStep, float k
 			Relax(sm, dg, timeStep, kStretch, kShear, kWale, rCourse, rWale);
 
 		float maxDelta = 0.0f;
+		bool diverged = false;
+
 		for (size_t v = 0; v < sm.vertices.size(); v++)
 		{
-			maxDelta = glm::max(maxDelta, glm::length(sm.vertices[v] - prev[v]));
+			float delta = glm::length(sm.vertices[v] - prev[v]);
+
+			if (!std::isfinite(delta))
+			{
+				diverged = true;
+				break;
+			}
+
+			maxDelta = glm::max(maxDelta, delta);
+		}
+
+		if (diverged)
+		{
+			std::cout << "ExportFullyRelaxedKnit: diverged at iteration " << iter
+				<< " -- vertex positions are no longer finite, so nothing was written."
+				<< " Try a lower rest length or a smaller swatch." << std::endl;
+			return false;
 		}
 
 		if (maxDelta < tol)
@@ -3376,7 +3414,7 @@ int main(int argc, char* argv[])
 
 		//====================================== GUI STUFF ========================================//
 		bool p_open = false;
-		ImGui::Begin("I know where you live", &p_open);// ImGuiWindowFlags_AlwaysAutoResize);
+		ImGui::Begin("Stitch Mesh - Gen & Sim", &p_open);// ImGuiWindowFlags_AlwaysAutoResize);
 
 		ImGui::Text("FPS: %.1f", fps);
 
@@ -3451,8 +3489,8 @@ int main(int argc, char* argv[])
 			yarnHack = true;
 
 		ImGui::NewLine();
-		ImGui::SliderFloat("Rest Length (Course)", &restLengthCourse, 0.05f, 2.0f);
-		ImGui::SliderFloat("Rest Length (Wale)", &restLengthWale, 0.05f, 2.0f);
+		ImGui::SliderFloat("Rest Length (Course)", &restLengthCourse, 0.05f, 7.0f);
+		ImGui::SliderFloat("Rest Length (Wale)", &restLengthWale, 0.05f, 7.0f);
 
 
 		ImGui::NewLine();
