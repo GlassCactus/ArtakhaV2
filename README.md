@@ -2,7 +2,7 @@
 
 # 🧶 ArtakhaV2 🧶
 <sup><i>/arr-TOCK-ah/</i></sup>
-### Real-Time Yarn-Level Knit Simulation
+### Real-Time Stitch-Level Knit Simulation
 
 <img width="1920" height="1080" alt="Neighbor_Aware_Relaxation" src="https://github.com/user-attachments/assets/1d596fc4-3008-486a-af47-2e1f43b66af5" />
 
@@ -10,7 +10,7 @@
 
 <div align="left">
 
-**ArtakhaV2** is a real-time yarn-level knit simulation and rendering system. It constructs stitch meshes, relaxes them under knit-mechanics energy models,
+**ArtakhaV2** is a real-time stitch-level knit simulation and rendering system. It constructs stitch meshes, relaxes them under knit-mechanics energy models,
 and generates procedural yarn geometry by sweeping Catmull-Rom splines into
 tubular strands using parallel-transport frames.
 
